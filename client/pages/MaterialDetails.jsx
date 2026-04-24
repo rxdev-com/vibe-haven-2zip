@@ -1,441 +1,312 @@
 import React, { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  ArrowLeft,
+  ShoppingCart,
+  Plus,
+  Minus,
+  Star,
+  MapPin,
+  Phone,
+  Truck,
+  Package,
+  Heart,
+  Loader2,
+  Calendar,
+} from "lucide-react";
+import AppHeader from "@/components/AppHeader";
 import { useCart } from "@/contexts/CartContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Star, MapPin, Phone, Package, ShoppingCart, Heart, Share2, Truck, Shield, CheckCircle, Clock, MessageSquare } from "lucide-react";
-// Mock data for material details
-const getMaterialDetails = (id)=>({
-        id,
-        name: "Premium Basmati Rice",
-        category: "Grains & Cereals",
-        price: 120,
-        unit: "kg",
-        description: "Premium quality long-grain basmati rice with excellent aroma and taste. Sourced directly from the finest farms in Punjab. Perfect for biryanis, pulavs, and daily cooking. Aged for optimal texture and fragrance.",
-        supplier: {
-            id: "supplier-1",
-            name: "Rajesh Grain Merchants",
-            businessName: "Grain Merchants",
-            location: "Ghaziabad, Uttar Pradesh",
-            phone: "+91 98765 43210",
-            email: "contact@grainmerchants.com",
-            rating: 4.8,
-            totalReviews: 156,
-            verified: true,
-            responseTime: "Within 2 hours",
-            avatar: "GM"
-        },
-        images: [
-            "/api/placeholder/400/400",
-            "/api/placeholder/400/400",
-            "/api/placeholder/400/400"
-        ],
-        inStock: true,
-        stockQuantity: 500,
-        minimumOrder: 5,
-        deliveryTime: "1-2 days",
-        specifications: {
-            Grade: "Premium A+",
-            Origin: "Punjab, India",
-            "Grain Length": "6.5-7.5mm",
-            Moisture: "12-13%",
-            Purity: "98-99%",
-            Packaging: "PP bags, customizable",
-            "Shelf Life": "12 months"
-        },
-        tags: [
-            "Premium",
-            "Long Grain",
-            "Aromatic",
-            "Fresh",
-            "Farm Direct"
-        ],
-        reviews: [
-            {
-                id: "1",
-                userName: "Priya Food Corner",
-                rating: 5,
-                comment: "Excellent quality rice! My customers love the aroma and taste. Consistent quality every time.",
-                date: "2025-01-20",
-                verified: true
-            },
-            {
-                id: "2",
-                userName: "Delhi Biryani House",
-                rating: 4,
-                comment: "Good quality rice, perfect for biryanis. Delivery was on time.",
-                date: "2025-01-18",
-                verified: true
-            },
-            {
-                id: "3",
-                userName: "Sharma Catering",
-                rating: 5,
-                comment: "Been ordering for 6 months now. Quality is consistent and price is reasonable.",
-                date: "2025-01-15",
-                verified: true
-            }
-        ],
-        relatedProducts: [
-            {
-                id: "2",
-                name: "Organic Brown Rice",
-                price: 95,
-                unit: "kg",
-                image: "/api/placeholder/150/150"
-            },
-            {
-                id: "3",
-                name: "Jasmine Rice",
-                price: 110,
-                unit: "kg",
-                image: "/api/placeholder/150/150"
-            },
-            {
-                id: "4",
-                name: "Sona Masoori Rice",
-                price: 85,
-                unit: "kg",
-                image: "/api/placeholder/150/150"
-            }
-        ]
-    });
+import { materialsAPI, savedAPI } from "@/lib/api";
+
 export default function MaterialDetails() {
-    const { id } = useParams();
-    const { user } = useAuth();
-    const { addItem, isInCart } = useCart();
-    const { toast } = useToast();
-    const [material, setMaterial] = useState(null);
-    const [selectedImage, setSelectedImage] = useState(0);
-    const [quantity, setQuantity] = useState(5);
-    const [isSaved, setIsSaved] = useState(false);
-    useEffect(()=>{
-        if (id) {
-            // Simulate API call
-            const materialData = getMaterialDetails(id);
-            setMaterial(materialData);
-            setQuantity(materialData.minimumOrder);
-        }
-    }, [
-        id
-    ]);
-    const handleAddToCart = ()=>{
-        if (!material) return;
-        const cartItem = {
-            id: material.id,
-            name: material.name,
-            price: material.price,
-            unit: material.unit,
-            supplier: material.supplier.businessName,
-            supplierLocation: material.supplier.location,
-            category: material.category,
-            inStock: material.inStock,
-            minimumOrder: material.minimumOrder
-        };
-        addItem(cartItem, quantity);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addItem, isInCart } = useCart();
+  const { toast } = useToast();
+
+  const [material, setMaterial] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    materialsAPI
+      .getById(id)
+      .then((d) => {
+        setMaterial(d.material);
+        setQuantity(d.material?.minOrderQuantity || 1);
+      })
+      .catch((e) =>
         toast({
-            title: "Added to Cart",
-            description: `${quantity} ${material.unit} of ${material.name} added to cart`
-        });
-    };
-    const handleSaveItem = ()=>{
-        setIsSaved(!isSaved);
-        toast({
-            title: isSaved ? "Removed from Saved" : "Saved Successfully",
-            description: isSaved ? `${material?.name} removed from saved items` : `${material?.name} added to saved items`
-        });
-    };
-    const handleWhatsAppChat = ()=>{
-        if (!material) return;
-        const message = `Hi! I'm interested in your ${material.name} (₹${material.price}/${material.unit}). Can you provide more details?`;
-        const phoneNumber = material.supplier.phone.replace(/\D/g, "");
-        // Remove non-digits
-        const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, "_blank");
-        toast({
-            title: "Opening WhatsApp",
-            description: `Starting chat with ${material.supplier.businessName}`
-        });
-    };
-    const handleCall = ()=>{
-        if (!material) return;
-        window.location.href = `tel:${material.supplier.phone}`;
-    };
-    const handleShare = ()=>{
-        if (navigator.share) {
-            navigator.share({
-                title: material?.name,
-                text: `Check out this ${material?.name} on JugaduBazar`,
-                url: window.location.href
-            });
-        } else {
-            navigator.clipboard.writeText(window.location.href);
-            toast({
-                title: "Link Copied",
-                description: "Product link copied to clipboard"
-            });
-        }
-    };
-    const renderStars = (rating)=>{
-        return Array.from({
-            length: 5
-        }, (_, i)=>/*#__PURE__*/ React.createElement(Star, {
-                key: i,
-                className: `w-4 h-4 ${i < rating ? "text-yellow-400 fill-current" : "text-gray-300"}`
-            }));
-    };
-    if (!material) {
-        return /*#__PURE__*/ React.createElement("div", {
-            className: "min-h-screen bg-gray-50 flex items-center justify-center"
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "text-center"
-        }, /*#__PURE__*/ React.createElement(Package, {
-            className: "w-12 h-12 text-gray-300 mx-auto mb-4"
-        }), /*#__PURE__*/ React.createElement("h2", {
-            className: "text-xl font-semibold text-gray-900 mb-2"
-        }, "Loading..."), /*#__PURE__*/ React.createElement("p", {
-            className: "text-gray-600"
-        }, "Fetching material details")));
+          title: "Could not load material",
+          description: e.message,
+          variant: "destructive",
+        }),
+      )
+      .finally(() => setLoading(false));
+    savedAPI
+      .getAll()
+      .then((d) => {
+        setSaved((d.items || []).some((i) => (i.material?._id || i.materialId) === id));
+      })
+      .catch(() => {});
+  }, [id, toast]);
+
+  const handleAdd = () => {
+    if (!material) return;
+    addItem(
+      {
+        id: material._id,
+        materialId: material._id,
+        name: material.name,
+        price: material.price,
+        image: material.image,
+        unit: material.unit,
+        stock: material.stock,
+        supplierId: material.supplierId?._id || material.supplierId,
+        supplierName:
+          material.supplierId?.businessName ||
+          material.supplierId?.name ||
+          "Supplier",
+      },
+      quantity,
+    );
+  };
+
+  const toggleSave = async () => {
+    setSaved((s) => !s);
+    try {
+      if (saved) await savedAPI.remove(id);
+      else await savedAPI.add(id);
+    } catch (e) {
+      setSaved((s) => !s);
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
     }
-    return /*#__PURE__*/ React.createElement("div", {
-        className: "min-h-screen bg-gray-50"
-    }, /* Header */ /*#__PURE__*/ React.createElement("header", {
-        className: "bg-white border-b sticky top-0 z-40"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center justify-between h-16"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-4"
-    }, /*#__PURE__*/ React.createElement(Link, {
-        to: "/vendor/dashboard",
-        className: "flex items-center text-gray-600 hover:text-saffron-600 transition-colors"
-    }, /*#__PURE__*/ React.createElement(ArrowLeft, {
-        className: "w-4 h-4 mr-2"
-    }), "Back to Dashboard"), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-2"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "w-8 h-8 bg-gradient-to-r from-saffron-500 to-emerald-500 rounded-lg flex items-center justify-center"
-    }, /*#__PURE__*/ React.createElement("span", {
-        className: "text-white font-bold text-sm"
-    }, "JB")), /*#__PURE__*/ React.createElement("span", {
-        className: "text-xl font-bold bg-gradient-to-r from-saffron-600 to-emerald-600 bg-clip-text text-transparent"
-    }, "JugaduBazar"))), /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        size: "sm",
-        onClick: handleShare
-    }, /*#__PURE__*/ React.createElement(Share2, {
-        className: "w-4 h-4 mr-2"
-    }), "Share")))), /*#__PURE__*/ React.createElement("div", {
-        className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "grid grid-cols-1 lg:grid-cols-2 gap-8"
-    }, /* Product Images */ /*#__PURE__*/ React.createElement("div", {
-        className: "space-y-4"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "aspect-square bg-gray-100 rounded-lg overflow-hidden"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "w-full h-full flex items-center justify-center text-gray-400"
-    }, /*#__PURE__*/ React.createElement(Package, {
-        className: "w-24 h-24"
-    }))), /*#__PURE__*/ React.createElement("div", {
-        className: "grid grid-cols-3 gap-2"
-    }, material.images.map((_, index)=>/*#__PURE__*/ React.createElement("button", {
-            key: index,
-            onClick: ()=>setSelectedImage(index),
-            className: `aspect-square bg-gray-100 rounded-lg overflow-hidden border-2 ${selectedImage === index ? "border-saffron-500" : "border-transparent"}`
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "w-full h-full flex items-center justify-center text-gray-400"
-        }, /*#__PURE__*/ React.createElement(Package, {
-            className: "w-8 h-8"
-        })))))), /* Product Info */ /*#__PURE__*/ React.createElement("div", {
-        className: "space-y-6"
-    }, /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center justify-between mb-2"
-    }, /*#__PURE__*/ React.createElement(Badge, {
-        variant: "outline"
-    }, material.category), /*#__PURE__*/ React.createElement(Button, {
-        variant: "ghost",
-        size: "sm",
-        onClick: handleSaveItem,
-        className: isSaved ? "text-red-500" : "text-gray-500"
-    }, /*#__PURE__*/ React.createElement(Heart, {
-        className: `w-5 h-5 ${isSaved ? "fill-current" : ""}`
-    }))), /*#__PURE__*/ React.createElement("h1", {
-        className: "text-3xl font-bold text-gray-900 mb-2"
-    }, material.name), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-4 mb-4"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-1"
-    }, renderStars(Math.round(material.supplier.rating)), /*#__PURE__*/ React.createElement("span", {
-        className: "text-sm text-gray-600 ml-1"
-    }, material.supplier.rating, " (", material.supplier.totalReviews, " ", "reviews)")), /*#__PURE__*/ React.createElement(Badge, {
-        className: material.inStock ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-    }, material.inStock ? "In Stock" : "Out of Stock")), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-2 mb-4"
-    }, material.tags.map((tag, index)=>/*#__PURE__*/ React.createElement(Badge, {
-            key: index,
-            variant: "secondary",
-            className: "text-xs"
-        }, tag))), /*#__PURE__*/ React.createElement("p", {
-        className: "text-gray-700 leading-relaxed"
-    }, material.description)), /* Price and Quantity */ /*#__PURE__*/ React.createElement("div", {
-        className: "bg-white border border-gray-200 rounded-lg p-6"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center justify-between mb-4"
-    }, /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("span", {
-        className: "text-3xl font-bold text-gray-900"
-    }, "₹", material.price), /*#__PURE__*/ React.createElement("span", {
-        className: "text-lg text-gray-600"
-    }, "/", material.unit)), /*#__PURE__*/ React.createElement("div", {
-        className: "text-right"
-    }, /*#__PURE__*/ React.createElement("p", {
-        className: "text-sm text-gray-600"
-    }, "Available: ", material.stockQuantity, " ", material.unit), /*#__PURE__*/ React.createElement("p", {
-        className: "text-sm text-gray-600"
-    }, "Min. order: ", material.minimumOrder, " ", material.unit))), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-4 mb-4"
-    }, /*#__PURE__*/ React.createElement("label", {
-        className: "text-sm font-medium text-gray-700"
-    }, "Quantity:"), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-2"
-    }, /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        size: "sm",
-        onClick: ()=>setQuantity(Math.max(material.minimumOrder, quantity - 1)),
-        disabled: quantity <= material.minimumOrder
-    }, "-"), /*#__PURE__*/ React.createElement("span", {
-        className: "w-16 text-center py-2 border border-gray-300 rounded"
-    }, quantity), /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        size: "sm",
-        onClick: ()=>setQuantity(Math.min(material.stockQuantity, quantity + 1)),
-        disabled: quantity >= material.stockQuantity
-    }, "+"), /*#__PURE__*/ React.createElement("span", {
-        className: "text-sm text-gray-600"
-    }, material.unit))), /*#__PURE__*/ React.createElement("div", {
-        className: "grid grid-cols-2 gap-3"
-    }, /*#__PURE__*/ React.createElement(Button, {
-        onClick: handleAddToCart,
-        disabled: !material.inStock || isInCart(material.id),
-        className: "bg-gradient-to-r from-saffron-500 to-orange-500 hover:from-saffron-600 hover:to-orange-600"
-    }, /*#__PURE__*/ React.createElement(ShoppingCart, {
-        className: "w-4 h-4 mr-2"
-    }), isInCart(material.id) ? "In Cart" : "Add to Cart"), /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        onClick: handleWhatsAppChat,
-        className: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-    }, /*#__PURE__*/ React.createElement(MessageSquare, {
-        className: "w-4 h-4 mr-2"
-    }), "WhatsApp")), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center justify-center space-x-4 mt-4 pt-4 border-t border-gray-200"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center text-sm text-gray-600"
-    }, /*#__PURE__*/ React.createElement(Truck, {
-        className: "w-4 h-4 mr-1"
-    }), "Delivery: ", material.deliveryTime), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center text-sm text-gray-600"
-    }, /*#__PURE__*/ React.createElement(Shield, {
-        className: "w-4 h-4 mr-1"
-    }), "Quality Assured"))))), /* Supplier Information */ /*#__PURE__*/ React.createElement(Card, {
-        className: "mt-8"
-    }, /*#__PURE__*/ React.createElement(CardHeader, null, /*#__PURE__*/ React.createElement(CardTitle, null, "Supplier Information")), /*#__PURE__*/ React.createElement(CardContent, null, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-start justify-between"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-4"
-    }, /*#__PURE__*/ React.createElement(Avatar, {
-        className: "w-16 h-16"
-    }, /*#__PURE__*/ React.createElement(AvatarFallback, {
-        className: "bg-gradient-to-r from-blue-500 to-purple-500 text-white text-lg font-bold"
-    }, material.supplier.avatar)), /*#__PURE__*/ React.createElement("div", null, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-2 mb-1"
-    }, /*#__PURE__*/ React.createElement("h3", {
-        className: "text-lg font-semibold text-gray-900"
-    }, material.supplier.businessName), material.supplier.verified && /*#__PURE__*/ React.createElement(CheckCircle, {
-        className: "w-5 h-5 text-green-500"
-    })), /*#__PURE__*/ React.createElement("p", {
-        className: "text-gray-600"
-    }, material.supplier.name), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center space-x-4 mt-2 text-sm text-gray-500"
-    }, /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center"
-    }, /*#__PURE__*/ React.createElement(MapPin, {
-        className: "w-4 h-4 mr-1"
-    }), material.supplier.location), /*#__PURE__*/ React.createElement("div", {
-        className: "flex items-center"
-    }, /*#__PURE__*/ React.createElement(Clock, {
-        className: "w-4 h-4 mr-1"
-    }), "Responds ", material.supplier.responseTime)))), /*#__PURE__*/ React.createElement("div", {
-        className: "flex space-x-2"
-    }, /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        size: "sm",
-        onClick: handleCall
-    }, /*#__PURE__*/ React.createElement(Phone, {
-        className: "w-4 h-4 mr-2"
-    }), "Call"), /*#__PURE__*/ React.createElement(Button, {
-        variant: "outline",
-        size: "sm",
-        onClick: handleWhatsAppChat
-    }, /*#__PURE__*/ React.createElement(MessageSquare, {
-        className: "w-4 h-4 mr-2"
-    }), "WhatsApp"))))), /* Specifications */ /*#__PURE__*/ React.createElement(Card, {
-        className: "mt-8"
-    }, /*#__PURE__*/ React.createElement(CardHeader, null, /*#__PURE__*/ React.createElement(CardTitle, null, "Specifications")), /*#__PURE__*/ React.createElement(CardContent, null, /*#__PURE__*/ React.createElement("div", {
-        className: "grid grid-cols-1 md:grid-cols-2 gap-4"
-    }, Object.entries(material.specifications).map(([key, value])=>/*#__PURE__*/ React.createElement("div", {
-            key: key,
-            className: "flex justify-between py-2 border-b border-gray-100"
-        }, /*#__PURE__*/ React.createElement("span", {
-            className: "font-medium text-gray-700"
-        }, key, ":"), /*#__PURE__*/ React.createElement("span", {
-            className: "text-gray-600"
-        }, value)))))), /* Reviews */ /*#__PURE__*/ React.createElement(Card, {
-        className: "mt-8"
-    }, /*#__PURE__*/ React.createElement(CardHeader, null, /*#__PURE__*/ React.createElement(CardTitle, null, "Customer Reviews"), /*#__PURE__*/ React.createElement(CardDescription, null, material.reviews.length, " reviews from verified buyers")), /*#__PURE__*/ React.createElement(CardContent, null, /*#__PURE__*/ React.createElement("div", {
-        className: "space-y-4"
-    }, material.reviews.map((review)=>/*#__PURE__*/ React.createElement("div", {
-            key: review.id,
-            className: "border-b border-gray-100 pb-4 last:border-b-0"
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "flex items-center justify-between mb-2"
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "flex items-center space-x-2"
-        }, /*#__PURE__*/ React.createElement("span", {
-            className: "font-medium text-gray-900"
-        }, review.userName), review.verified && /*#__PURE__*/ React.createElement(Badge, {
-            variant: "secondary",
-            className: "text-xs"
-        }, "Verified")), /*#__PURE__*/ React.createElement("span", {
-            className: "text-sm text-gray-500"
-        }, new Date(review.date).toLocaleDateString())), /*#__PURE__*/ React.createElement("div", {
-            className: "flex space-x-1 mb-2"
-        }, renderStars(review.rating)), /*#__PURE__*/ React.createElement("p", {
-            className: "text-gray-700"
-        }, review.comment)))))), /* Related Products */ /*#__PURE__*/ React.createElement(Card, {
-        className: "mt-8"
-    }, /*#__PURE__*/ React.createElement(CardHeader, null, /*#__PURE__*/ React.createElement(CardTitle, null, "Related Products")), /*#__PURE__*/ React.createElement(CardContent, null, /*#__PURE__*/ React.createElement("div", {
-        className: "grid grid-cols-2 md:grid-cols-4 gap-4"
-    }, material.relatedProducts.map((product)=>/*#__PURE__*/ React.createElement(Link, {
-            key: product.id,
-            to: `/material/${product.id}`
-        }, /*#__PURE__*/ React.createElement(Card, {
-            className: "hover:shadow-lg transition-shadow cursor-pointer"
-        }, /*#__PURE__*/ React.createElement(CardContent, {
-            className: "p-4"
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "aspect-square bg-gray-100 rounded-lg mb-3"
-        }, /*#__PURE__*/ React.createElement("div", {
-            className: "w-full h-full flex items-center justify-center text-gray-400"
-        }, /*#__PURE__*/ React.createElement(Package, {
-            className: "w-8 h-8"
-        }))), /*#__PURE__*/ React.createElement("h4", {
-            className: "font-medium text-gray-900 text-sm mb-1 line-clamp-2"
-        }, product.name), /*#__PURE__*/ React.createElement("p", {
-            className: "text-saffron-600 font-semibold"
-        }, "₹", product.price, "/", product.unit))))))))));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader />
+        <div className="flex justify-center py-32">
+          <Loader2 className="w-10 h-10 animate-spin text-saffron-500" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!material) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppHeader />
+        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+          <Package className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h2 className="text-2xl font-bold mb-2">Material not found</h2>
+          <Link to="/vendor/dashboard">
+            <Button>Back to dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const supplier = material.supplierId || {};
+  const inCart = isInCart(material._id);
+  const max = material.maxOrderQuantity || material.stock;
+  const min = material.minOrderQuantity || 1;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader />
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Link
+          to="/vendor/dashboard"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-saffron-600 mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back to marketplace
+        </Link>
+
+        <div className="grid lg:grid-cols-2 gap-8">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <Card className="overflow-hidden">
+              <div className="relative aspect-square bg-gradient-to-br from-saffron-100 to-emerald-100">
+                {material.image ? (
+                  <img
+                    src={material.image}
+                    alt={material.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package className="w-32 h-32 text-saffron-300" />
+                  </div>
+                )}
+                <button
+                  onClick={toggleSave}
+                  className="absolute top-4 right-4 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow"
+                >
+                  <Heart
+                    className={`w-5 h-5 ${
+                      saved ? "fill-red-500 text-red-500" : "text-gray-600"
+                    }`}
+                  />
+                </button>
+              </div>
+            </Card>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-4"
+          >
+            <div>
+              <Badge className="mb-2">{material.category}</Badge>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {material.name}
+              </h1>
+              {(material.rating || 0) > 0 && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold">
+                      {material.rating.toFixed(1)}
+                    </span>
+                  </span>
+                  <span className="text-gray-500">
+                    ({material.totalRatings || 0} reviews)
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-r from-saffron-50 to-orange-50 p-4 rounded-lg">
+              <p className="text-4xl font-bold text-saffron-600">
+                ₹{material.price}
+                <span className="text-base font-normal text-gray-600">
+                  /{material.unit}
+                </span>
+              </p>
+              <div className="flex items-center gap-3 mt-2 text-sm">
+                <Badge
+                  className={
+                    material.stock <= 0
+                      ? "bg-red-500"
+                      : material.stock < 10
+                      ? "bg-orange-500"
+                      : "bg-emerald-500"
+                  }
+                >
+                  {material.stock <= 0
+                    ? "Out of Stock"
+                    : `${material.stock} ${material.unit} available`}
+                </Badge>
+                <span className="text-gray-500">
+                  Min order: {min} {material.unit}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-gray-700 leading-relaxed">
+              {material.description}
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {material.origin && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <MapPin className="w-4 h-4 text-saffron-500" />
+                  Origin: {material.origin}
+                </div>
+              )}
+              {material.shelfLife && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Calendar className="w-4 h-4 text-saffron-500" />
+                  Shelf life: {material.shelfLife}
+                </div>
+              )}
+            </div>
+
+            <Card className="bg-emerald-50 border-emerald-200">
+              <CardContent className="p-4">
+                <p className="text-xs text-emerald-700 uppercase tracking-wide mb-2">
+                  Sold by
+                </p>
+                <p className="font-semibold">
+                  {supplier.businessName || supplier.name}
+                </p>
+                {supplier.phone && (
+                  <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                    <Phone className="w-3 h-3" /> {supplier.phone}
+                  </p>
+                )}
+                {supplier.address && (
+                  <p className="text-sm text-gray-600 flex items-start gap-1 mt-1">
+                    <MapPin className="w-3 h-3 mt-1 flex-shrink-0" />{" "}
+                    {supplier.address}
+                  </p>
+                )}
+                {supplier.rating > 0 && (
+                  <p className="text-sm flex items-center gap-1 mt-2">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    {supplier.rating.toFixed(1)} supplier rating
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center border rounded-lg">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setQuantity((q) => Math.max(min, q - 1))}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <span className="w-12 text-center font-semibold">{quantity}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setQuantity((q) => Math.min(max, q + 1))}
+                  disabled={quantity >= max}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                onClick={handleAdd}
+                disabled={material.stock <= 0}
+                className="flex-1 bg-gradient-to-r from-saffron-500 to-orange-500 hover:from-saffron-600 hover:to-orange-600"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                {inCart ? "Add more" : "Add to Cart"} · ₹{material.price * quantity}
+              </Button>
+              <Button
+                onClick={() => {
+                  handleAdd();
+                  setTimeout(() => navigate("/cart"), 200);
+                }}
+                disabled={material.stock <= 0}
+                variant="outline"
+              >
+                <Truck className="w-4 h-4 mr-2" />
+                Buy Now
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
 }
