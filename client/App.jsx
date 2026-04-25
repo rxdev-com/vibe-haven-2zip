@@ -27,6 +27,7 @@ import Rating from "./pages/Rating";
 import SavedItems from "./pages/SavedItems";
 import MaterialDetails from "./pages/MaterialDetails";
 import VendorMarketplace from "./pages/VendorMarketplace";
+import VendorMarketAnalysis from "./pages/VendorMarketAnalysis";
 import VendorSellItems from "./pages/VendorSellItems";
 import VendorMyListings from "./pages/VendorMyListings";
 import VendorRevenue from "./pages/VendorRevenue";
@@ -76,6 +77,7 @@ const App = () => (
                   <Route path="/cart" element={<Vendor><CartWithInstructions /></Vendor>} />
                   <Route path="/track-order/:orderId" element={<Vendor><OrderTrackingLive /></Vendor>} />
                   <Route path="/vendor/marketplace" element={<Vendor><VendorMarketplace /></Vendor>} />
+                  <Route path="/vendor/market-analysis" element={<Vendor><VendorMarketAnalysis /></Vendor>} />
                   <Route path="/vendor/sell-items" element={<Vendor><VendorSellItems /></Vendor>} />
                   <Route path="/vendor/my-listings" element={<Vendor><VendorMyListings /></Vendor>} />
                   <Route path="/vendor/revenue" element={<Vendor><VendorRevenue /></Vendor>} />
