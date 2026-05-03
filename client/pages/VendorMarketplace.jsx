@@ -26,7 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
 import { materialsAPI } from "@/lib/api";
 
-const CATEGORIES = ["All", "Oil", "Spice", "Grain", "Pulse", "Vegetable", "Dairy", "Other"];
+const CATEGORIES = ["All Categories", "Oil", "Spice", "Grain", "Pulse", "Vegetable", "Dairy", "Other"];
+const SORT_OPTIONS = ["Most Recent", "Price: Low to High", "Price: High to Low", "Rating", "Most Popular"];
 
 export default function VendorMarketplace() {
   const { toast } = useToast();
@@ -34,7 +35,8 @@ export default function VendorMarketplace() {
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState("All Categories");
+  const [sortBy, setSortBy] = useState("Most Recent");
 
   useEffect(() => {
     materialsAPI
@@ -47,65 +49,72 @@ export default function VendorMarketplace() {
   }, [toast]);
 
   const filtered = useMemo(
-    () =>
-      materials.filter((m) => {
+    () => {
+      let list = materials.filter((m) => {
         const ms = !search || m.name.toLowerCase().includes(search.toLowerCase());
-        const mc = category === "All" || m.category === category;
+        const mc = category === "All Categories" || m.category === category;
         return ms && mc;
-      }),
-    [materials, search, category],
+      });
+      
+      // Sort
+      if (sortBy === "Price: Low to High") list.sort((a, b) => (a.price || 0) - (b.price || 0));
+      else if (sortBy === "Price: High to Low") list.sort((a, b) => (b.price || 0) - (a.price || 0));
+      else if (sortBy === "Rating") list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      else if (sortBy === "Most Popular") list.sort((a, b) => (b.totalRatings || 0) - (a.totalRatings || 0));
+      
+      return list;
+    },
+    [materials, search, category, sortBy],
   );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Marketplace" />
+      <AppHeader title="Vendor Marketplace" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Link
-          to="/vendor/dashboard"
-          className="inline-flex items-center text-sm text-gray-600 hover:text-saffron-600 mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to dashboard
-        </Link>
-
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6"
-        >
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <ShoppingBag className="w-7 h-7 text-saffron-500" /> Marketplace
-            </h1>
-            <p className="text-sm text-gray-600">
-              Discover all available raw materials from local suppliers
-            </p>
+            <Link
+              to="/vendor/dashboard"
+              className="inline-flex items-center text-sm text-gray-600 hover:text-saffron-600 mb-3"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900">Vendor Marketplace</h1>
+            <p className="text-sm text-gray-600 mt-1">Buy and sell unused items with other vendors</p>
           </div>
-          <Link to="/vendor/sell-items">
-            <Button variant="outline">
-              <Plus className="w-4 h-4 mr-2" /> List Item for Resale
-            </Button>
-          </Link>
-        </motion.div>
+        </div>
 
-        <Card className="mb-4">
+        <Card className="mb-6">
           <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Search..."
+                placeholder="Search for items..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
               />
             </div>
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="sm:w-48">
+              <SelectTrigger className="sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="sm:w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -156,54 +165,57 @@ export default function VendorMarketplace() {
                     </Link>
                     <CardContent className="p-4 flex flex-col flex-1">
                       <Link to={`/material/${m._id}`}>
-                        <h3 className="font-semibold hover:text-saffron-600 line-clamp-1">
+                        <h3 className="font-semibold hover:text-saffron-600 line-clamp-1 mb-1">
                           {m.name}
                         </h3>
                       </Link>
-                      <p className="text-xs text-gray-500 line-clamp-2 mb-2">
-                        {m.description}
+                      <p className="text-xs text-gray-500 mb-2">
+                        {m.supplierId?.businessName || m.supplierId?.name || "Supplier"}
                       </p>
                       {(m.rating || 0) > 0 && (
                         <p className="text-xs flex items-center gap-1 text-gray-500 mb-2">
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          {m.rating.toFixed(1)} · {m.totalRatings || 0} reviews
+                          {m.rating.toFixed(1)} · ({m.totalRatings || 0} reviews)
                         </p>
                       )}
-                      <div className="mt-auto flex items-center justify-between">
-                        <p className="text-lg font-bold text-saffron-600">
+                      <div className="mt-auto">
+                        <p className="text-xl font-bold text-gray-900 mb-3">
                           ₹{m.price}
-                          <span className="text-xs font-normal text-gray-500">
+                          <span className="text-sm font-normal text-gray-500">
                             /{m.unit}
                           </span>
                         </p>
-                        <Button
-                          size="sm"
-                          disabled={m.stock <= 0}
-                          onClick={() =>
-                            addItem(
-                              {
-                                id: m._id,
-                                materialId: m._id,
-                                name: m.name,
-                                price: m.price,
-                                image: m.image,
-                                unit: m.unit,
-                                stock: m.stock,
-                                supplierName:
-                                  m.supplierId?.businessName ||
-                                  m.supplierId?.name,
-                              },
-                              m.minOrderQuantity || 1,
-                            )
-                          }
-                          className={
-                            inCart
-                              ? "bg-emerald-600 hover:bg-emerald-700"
-                              : "bg-gradient-to-r from-saffron-500 to-orange-500"
-                          }
-                        >
-                          {inCart ? "Added" : "Add"}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-saffron-500 hover:bg-saffron-600 text-white text-xs"
+                            disabled={m.stock <= 0}
+                            onClick={() =>
+                              addItem(
+                                {
+                                  id: m._id,
+                                  materialId: m._id,
+                                  name: m.name,
+                                  price: m.price,
+                                  image: m.image,
+                                  unit: m.unit,
+                                  stock: m.stock,
+                                  supplierName:
+                                    m.supplierId?.businessName ||
+                                    m.supplierId?.name,
+                                },
+                                m.minOrderQuantity || 1,
+                              )
+                            }
+                          >
+                            Contact Seller
+                          </Button>
+                          <Link to={`/material/${m._id}`} className="flex-1">
+                            <Button variant="outline" size="sm" className="w-full text-xs">
+                              View Details
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

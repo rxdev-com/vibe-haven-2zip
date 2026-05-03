@@ -163,22 +163,20 @@ export default function VendorSellItems() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Sell Items" />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center space-x-4 mb-6">
+      <AppHeader title="List Items" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6">
           <Link to="/vendor/dashboard">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="mb-3">
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">List Your Items</h1>
-            <p className="text-gray-600">Sell unused items to other vendors</p>
-          </div>
+          <h1 className="text-3xl font-bold text-gray-900">List Your Items</h1>
+          <p className="text-gray-600 text-sm mt-1">Sell unused items to other vendors in our marketplace</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main form */}
             <div className="lg:col-span-2 space-y-6">
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
