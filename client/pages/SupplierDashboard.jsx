@@ -162,21 +162,35 @@ export default function SupplierDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { label: "Total Products", value: materials.length, icon: Package, color: "text-emerald-600" },
-            { label: "Pending Orders", value: pendingOrders.length, icon: Clock, color: "text-orange-600" },
-            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue), icon: TrendingUp, color: "text-blue-600" },
-            { label: "Completed Orders", value: completedOrders.length, icon: CheckCircle, color: "text-emerald-600" },
+            { label: "Total Products", value: materials.length, icon: Package, color: "text-emerald-600", link: "/supplier/inventory" },
+            { label: "Pending Orders", value: pendingOrders.length, icon: Clock, color: "text-orange-600", link: "/supplier/pending-orders" },
+            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue), icon: TrendingUp, color: "text-blue-600", link: null },
+            { label: "Completed Orders", value: completedOrders.length, icon: CheckCircle, color: "text-emerald-600", link: null },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <s.icon className={`w-6 h-6 ${s.color}`} />
-                  <div>
-                    <p className="text-xs text-gray-500">{s.label}</p>
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              {s.link ? (
+                <Link to={s.link} className="block">
+                  <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <s.icon className={`w-6 h-6 ${s.color}`} />
+                      <div>
+                        <p className="text-xs text-gray-500">{s.label}</p>
+                        <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ) : (
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <s.icon className={`w-6 h-6 ${s.color}`} />
+                    <div>
+                      <p className="text-xs text-gray-500">{s.label}</p>
+                      <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </motion.div>
           ))}
         </div>
