@@ -136,15 +136,19 @@ export default function SupplierDashboard() {
             <Badge className="bg-emerald-100 text-emerald-700">Supplier Dashboard</Badge>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              {pendingOrders.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">{pendingOrders.length}</span>
-              )}
-            </Button>
-            <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm">
-              {(user?.name || "PS").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
-            </div>
+            <Link to="/supplier/notifications">
+              <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
+                <Bell className="w-5 h-5" />
+                {pendingOrders.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">{pendingOrders.length}</span>
+                )}
+              </Button>
+            </Link>
+            <Link to="/supplier/profile">
+              <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm cursor-pointer hover:bg-emerald-600 transition-colors">
+                {(user?.name || "PS").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+              </div>
+            </Link>
             <Button variant="outline" size="sm" onClick={() => { logout(); navigate("/"); }}>
               <LogOut className="w-4 h-4 mr-1" /> Logout
             </Button>
