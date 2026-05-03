@@ -17,21 +17,28 @@ export function useCart() {
   return ctx;
 }
 
-// Normalize a backend cart item into the shape the UI expects
+// Normalize a backend cart item into the shape the UI expects.
+// Backend populates material.supplier (not material.supplierId).
 const toUiItem = (ci) => {
   if (!ci) return null;
   const m = ci.material || {};
+  const supplier = m.supplier || {};
+  const supplierId = typeof supplier === "object" ? supplier._id : supplier;
+  const supplierName =
+    (typeof supplier === "object"
+      ? supplier.businessName || supplier.name
+      : null) || "Supplier";
   return {
-    id: m._id || ci.materialId,
-    materialId: m._id || ci.materialId,
-    name: m.name,
-    price: m.price,
-    image: m.image,
-    unit: m.unit,
+    id: String(m._id || ci.materialId || ""),
+    materialId: String(m._id || ci.materialId || ""),
+    name: m.name || "",
+    price: m.price || 0,
+    image: m.image || "",
+    unit: m.unit || "unit",
     stock: m.stock,
-    supplierId: m.supplierId?._id || m.supplierId,
-    supplierName: m.supplierId?.businessName || m.supplierId?.name,
-    quantity: ci.quantity,
+    supplierId: supplierId ? String(supplierId) : null,
+    supplierName,
+    quantity: ci.quantity || 1,
   };
 };
 
@@ -41,6 +48,7 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Fetch full cart from backend — always use this as source of truth.
   const refresh = useCallback(async () => {
     if (!isAuthenticated || user?.role !== "vendor") {
       setItems([]);
@@ -51,11 +59,11 @@ export function CartProvider({ children }) {
       const data = await cartAPI.get();
       setItems((data.items || []).map(toUiItem).filter(Boolean));
     } catch (e) {
-      // ignore - cart endpoint may not be reachable for non-vendors
+      // Non-vendor or backend unavailable — silently ignore.
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user?.role]);
 
   useEffect(() => {
     refresh();
@@ -65,19 +73,26 @@ export function CartProvider({ children }) {
     async (item, quantity = 1) => {
       const id = item.id || item._id || item.materialId;
       if (!id) return;
-      // Optimistic update
+
+      // Optimistic update so the UI feels instant.
       setItems((prev) => {
-        const existing = prev.find((i) => i.id === id);
+        const existing = prev.find((i) => i.id === String(id));
         if (existing) {
           return prev.map((i) =>
-            i.id === id ? { ...i, quantity: i.quantity + quantity } : i,
+            i.id === String(id) ? { ...i, quantity: i.quantity + quantity } : i,
           );
         }
-        return [...prev, { ...item, id, materialId: id, quantity }];
+        return [
+          ...prev,
+          { ...item, id: String(id), materialId: String(id), quantity },
+        ];
       });
+
       try {
-        const data = await cartAPI.add(id, quantity);
-        setItems((data.items || []).map(toUiItem).filter(Boolean));
+        // Backend POST /cart returns { item } (single CartItem), not { items }.
+        // So we refresh the full cart after a successful add.
+        await cartAPI.add(id, quantity);
+        await refresh();
         toast({ title: "Added to cart", description: item.name });
       } catch (e) {
         toast({
@@ -85,7 +100,7 @@ export function CartProvider({ children }) {
           description: e.message,
           variant: "destructive",
         });
-        await refresh();
+        await refresh(); // Roll back optimistic update.
       }
     },
     [refresh, toast],
@@ -94,7 +109,7 @@ export function CartProvider({ children }) {
   const updateQuantity = useCallback(
     async (id, quantity) => {
       if (quantity <= 0) {
-        setItems((prev) => prev.filter((i) => i.id !== id));
+        setItems((prev) => prev.filter((i) => i.id !== String(id)));
         try {
           await cartAPI.remove(id);
         } catch (e) {
@@ -102,19 +117,23 @@ export function CartProvider({ children }) {
         }
         return;
       }
+
+      // Optimistic update.
       setItems((prev) =>
-        prev.map((i) => (i.id === id ? { ...i, quantity } : i)),
+        prev.map((i) => (i.id === String(id) ? { ...i, quantity } : i)),
       );
+
       try {
-        const data = await cartAPI.update(id, quantity);
-        setItems((data.items || []).map(toUiItem).filter(Boolean));
+        // Backend PUT /cart/:id returns { item }, not { items }.
+        await cartAPI.update(id, quantity);
+        // No need to refresh — optimistic update is correct.
       } catch (e) {
         toast({
           title: "Could not update cart",
           description: e.message,
           variant: "destructive",
         });
-        await refresh();
+        await refresh(); // Roll back.
       }
     },
     [refresh, toast],
@@ -122,7 +141,7 @@ export function CartProvider({ children }) {
 
   const removeItem = useCallback(
     async (id) => {
-      setItems((prev) => prev.filter((i) => i.id !== id));
+      setItems((prev) => prev.filter((i) => i.id !== String(id)));
       try {
         await cartAPI.remove(id);
       } catch (e) {
@@ -141,7 +160,10 @@ export function CartProvider({ children }) {
     }
   }, [refresh]);
 
-  const isInCart = useCallback((id) => items.some((i) => i.id === id), [items]);
+  const isInCart = useCallback(
+    (id) => items.some((i) => i.id === String(id)),
+    [items],
+  );
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const totalAmount = items.reduce(

@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 
 const materialSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true, index: "text" },
+    name: { type: String, required: true, trim: true },
     category: { type: String, required: true, index: true },
     price: { type: Number, required: true, min: 0 },
-    unit: { type: String, required: true }, // kg, litre, piece, etc.
+    unit: { type: String, required: true },
     stock: { type: Number, required: true, min: 0, default: 0 },
 
     description: { type: String, default: "" },
@@ -29,10 +29,12 @@ const materialSchema = new mongoose.Schema(
       index: true,
     },
 
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true, index: true },
     rating: { type: Number, default: 0 },
     totalRatings: { type: Number, default: 0 },
     totalSold: { type: Number, default: 0 },
+    totalOrders: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

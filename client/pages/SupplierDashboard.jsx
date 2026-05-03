@@ -164,8 +164,8 @@ export default function SupplierDashboard() {
           {[
             { label: "Total Products", value: materials.length, icon: Package, color: "text-emerald-600" },
             { label: "Pending Orders", value: pendingOrders.length, icon: Clock, color: "text-orange-600" },
-            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue || 32450), icon: TrendingUp, color: "text-blue-600" },
-            { label: "Completed Orders", value: completedOrders.length || 187, icon: CheckCircle, color: "text-emerald-600" },
+            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue), icon: TrendingUp, color: "text-blue-600" },
+            { label: "Completed Orders", value: completedOrders.length, icon: CheckCircle, color: "text-emerald-600" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
               <Card>

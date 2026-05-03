@@ -130,7 +130,7 @@ export default function VendorDashboard() {
         unit: m.unit,
         stock: m.stock,
         supplierName:
-          m.supplierId?.businessName || m.supplierId?.name || "Supplier",
+          m.supplier?.businessName || m.supplier?.name || "Supplier",
       },
       m.minOrderQuantity || 1,
     );
@@ -366,8 +366,8 @@ export default function VendorDashboard() {
                       <div className="text-xs text-gray-500 mb-3 flex items-center gap-2 flex-wrap">
                         <Truck className="w-3 h-3" />
                         <span className="truncate">
-                          {m.supplierId?.businessName ||
-                            m.supplierId?.name ||
+                          {m.supplier?.businessName ||
+                            m.supplier?.name ||
                             "Verified Supplier"}
                         </span>
                         {(m.rating || 0) > 0 && (

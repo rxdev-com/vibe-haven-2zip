@@ -36,6 +36,9 @@ import VendorRevenue from "./pages/VendorRevenue";
 import VendorActiveOrders from "./pages/VendorActiveOrders";
 import OrderTrackingLive from "./pages/OrderTrackingLive";
 import CartWithInstructions from "./pages/CartWithInstructions";
+import SupplierRevenue from "./pages/SupplierRevenue";
+import SupplierCompletedOrders from "./pages/SupplierCompletedOrders";
+import SupplierAnalytics from "./pages/SupplierAnalytics";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
 
@@ -93,9 +96,9 @@ const App = () => (
                   <Route path="/supplier/profile" element={<Supplier><SupplierProfile /></Supplier>} />
                   <Route path="/supplier/inventory" element={<Supplier><SupplierInventory /></Supplier>} />
                   <Route path="/supplier/pending-orders" element={<Supplier><SupplierPendingOrders /></Supplier>} />
-                  <Route path="/supplier/revenue" element={<Supplier><Placeholder title="Revenue Analytics" description="View your monthly revenue and financial analytics" backTo="/supplier/dashboard" backLabel="Back to Dashboard" /></Supplier>} />
-                  <Route path="/supplier/completed-orders" element={<Supplier><Placeholder title="Completed Orders" description="View all completed orders and delivery history" backTo="/supplier/dashboard" backLabel="Back to Dashboard" /></Supplier>} />
-                  <Route path="/supplier/analytics" element={<Supplier><Placeholder title="Analytics & Reports" description="View detailed analytics and business reports" backTo="/supplier/dashboard" backLabel="Back to Dashboard" /></Supplier>} />
+                  <Route path="/supplier/revenue" element={<Supplier><SupplierRevenue /></Supplier>} />
+                  <Route path="/supplier/completed-orders" element={<Supplier><SupplierCompletedOrders /></Supplier>} />
+                  <Route path="/supplier/analytics" element={<Supplier><SupplierAnalytics /></Supplier>} />
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>

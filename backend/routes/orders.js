@@ -9,6 +9,7 @@ import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = Router();
 
+// ─── LIST ORDERS ────────────────────────────────────────────────────────────
 router.get("/", requireAuth, async (req, res, next) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
@@ -23,7 +24,9 @@ router.get("/", requireAuth, async (req, res, next) => {
       filter.status = statuses.length === 1 ? statuses[0] : { $in: statuses };
     }
 
-    const skip = (Math.max(1, Number(page)) - 1) * Number(limit);
+    const parsedPage = Math.max(1, Number(page));
+    const parsedLimit = Math.min(100, Math.max(1, Number(limit)));
+    const skip = (parsedPage - 1) * parsedLimit;
 
     const [orders, total] = await Promise.all([
       Order.find(filter)
@@ -31,7 +34,7 @@ router.get("/", requireAuth, async (req, res, next) => {
         .populate("supplier", "name businessName phone address")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(parsedLimit),
       Order.countDocuments(filter),
     ]);
 
@@ -39,9 +42,9 @@ router.get("/", requireAuth, async (req, res, next) => {
       orders,
       pagination: {
         total,
-        page: Number(page),
-        pages: Math.ceil(total / Number(limit)),
-        limit: Number(limit),
+        page: parsedPage,
+        pages: Math.ceil(total / parsedLimit),
+        limit: parsedLimit,
       },
     });
   } catch (err) {
@@ -49,6 +52,54 @@ router.get("/", requireAuth, async (req, res, next) => {
   }
 });
 
+// ─── STATS SUMMARY — must be before /:id so "stats" isn't captured as an id ─
+router.get("/stats/summary", requireAuth, async (req, res, next) => {
+  try {
+    const filter =
+      req.user.role === "vendor"
+        ? { vendor: req.user._id }
+        : { supplier: req.user._id };
+
+    const [total, pending, active, delivered, revenueAgg] = await Promise.all([
+      Order.countDocuments(filter),
+      Order.countDocuments({ ...filter, status: "pending" }),
+      Order.countDocuments({
+        ...filter,
+        status: { $in: ["confirmed", "processing", "shipped", "in_transit"] },
+      }),
+      Order.countDocuments({ ...filter, status: "delivered" }),
+      Order.aggregate([
+        { $match: { ...filter, status: "delivered" } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
+    ]);
+
+    // Monthly revenue for current month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const [monthlyAgg, cancelledCount] = await Promise.all([
+      Order.aggregate([
+        { $match: { ...filter, status: "delivered", deliveredAt: { $gte: monthStart } } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
+      Order.countDocuments({ ...filter, status: "cancelled" }),
+    ]);
+
+    res.json({
+      total,
+      pending,
+      active,
+      delivered,
+      cancelled: cancelledCount,
+      totalRevenue: revenueAgg[0]?.total || 0,
+      monthlyRevenue: monthlyAgg[0]?.total || 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── SINGLE ORDER ────────────────────────────────────────────────────────────
 router.get("/:id", requireAuth, async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
@@ -72,7 +123,7 @@ router.get("/:id", requireAuth, async (req, res, next) => {
   }
 });
 
-// Map frontend payment method names to backend enum values
+// ─── CREATE ORDER ────────────────────────────────────────────────────────────
 function mapPaymentMethod(method) {
   const map = {
     cod: "cash",
@@ -87,14 +138,12 @@ function mapPaymentMethod(method) {
 }
 
 const createOrderSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        materialId: z.string(),
-        quantity: z.number().int().positive(),
-      }),
-    )
-    .min(1),
+  items: z.array(
+    z.object({
+      materialId: z.string(),
+      quantity: z.number().int().positive(),
+    }),
+  ).min(1),
   deliveryAddress: z.string().min(1),
   deliveryInstructions: z.string().optional(),
   specialInstructions: z.string().optional(),
@@ -110,16 +159,12 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
 
     const ids = data.items.map((i) => i.materialId);
     const materials = await Material.find({ _id: { $in: ids } });
-    if (materials.length !== ids.length) {
+    if (materials.length !== ids.length)
       return res.status(400).json({ error: "One or more materials not found" });
-    }
 
     const supplierId = materials[0].supplier.toString();
-    if (!materials.every((m) => m.supplier.toString() === supplierId)) {
-      return res
-        .status(400)
-        .json({ error: "All items must be from the same supplier" });
-    }
+    if (!materials.every((m) => m.supplier.toString() === supplierId))
+      return res.status(400).json({ error: "All items must be from the same supplier" });
 
     let subtotal = 0;
     const items = data.items.map((req) => {
@@ -142,7 +187,6 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
       };
     });
 
-    // Get supplier to use their delivery fee settings
     const supplier = await User.findById(supplierId);
     const supplierDeliveryFee = supplier?.deliveryFee ?? 50;
     const freeDeliveryThreshold = supplier?.freeDeliveryAbove ?? 1000;
@@ -150,7 +194,8 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
     const totalAmount = subtotal + deliveryFee;
 
     const paymentMethod = mapPaymentMethod(data.paymentMethod || "cash");
-    const deliveryInstructions = data.deliveryInstructions || data.specialInstructions || "";
+    const deliveryInstructions =
+      data.deliveryInstructions || data.specialInstructions || "";
 
     const order = await Order.create({
       vendor: req.user._id,
@@ -167,12 +212,19 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
       estimatedDelivery: new Date(Date.now() + 1000 * 60 * 60 * 24 * 2),
     });
 
-    // Decrement stock
+    // Decrement stock and update material sales counters
     await Promise.all(
       items.map((item) =>
         Material.updateOne(
           { _id: item.material },
-          { $inc: { stock: -item.quantity, totalSold: item.quantity } },
+          {
+            $inc: {
+              stock: -item.quantity,
+              totalSold: item.quantity,
+              totalOrders: 1,
+              totalRevenue: item.total,
+            },
+          },
         ),
       ),
     );
@@ -187,7 +239,7 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
       await Notification.create({
         user: supplierId,
         title: "New Order Received",
-        message: `New order from ${req.user.businessName || req.user.name}`,
+        message: `New order #${order.orderNumber} from ${req.user.businessName || req.user.name}`,
         type: "order",
         relatedId: order._id,
         relatedModel: "Order",
@@ -204,6 +256,7 @@ router.post("/", requireAuth, requireRole("vendor"), async (req, res, next) => {
   }
 });
 
+// ─── UPDATE STATUS (supplier only) ──────────────────────────────────────────
 router.put("/:id/status", requireAuth, requireRole("supplier"), async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
@@ -229,14 +282,15 @@ router.put("/:id/status", requireAuth, requireRole("supplier"), async (req, res,
       note: note || req.body.supplierNotes || `Status changed to ${status}`,
       changedBy: req.user._id,
     });
+
     if (status === "delivered") {
       order.deliveredAt = new Date();
-      // Update supplier revenue
       await User.updateOne(
         { _id: req.user._id },
         { $inc: { totalRevenue: order.totalAmount } },
       );
     }
+
     await order.save();
 
     // Notify vendor
@@ -244,7 +298,7 @@ router.put("/:id/status", requireAuth, requireRole("supplier"), async (req, res,
       await Notification.create({
         user: order.vendor,
         title: `Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-        message: `Your order #${order.orderNumber} has been ${status}`,
+        message: `Your order #${order.orderNumber} is now ${status}`,
         type: "order",
         relatedId: order._id,
         relatedModel: "Order",
@@ -261,6 +315,7 @@ router.put("/:id/status", requireAuth, requireRole("supplier"), async (req, res,
   }
 });
 
+// ─── CANCEL ORDER ────────────────────────────────────────────────────────────
 router.put("/:id/cancel", requireAuth, async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
@@ -278,9 +333,8 @@ router.put("/:id/cancel", requireAuth, async (req, res, next) => {
     const order = await Order.findOne(filter);
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    if (order.status === "delivered" || order.status === "cancelled") {
+    if (order.status === "delivered" || order.status === "cancelled")
       return res.status(400).json({ error: "Cannot cancel this order" });
-    }
 
     order.status = "cancelled";
     order.cancellationReason = cancellationReason || "Cancelled";
@@ -292,13 +346,20 @@ router.put("/:id/cancel", requireAuth, async (req, res, next) => {
     });
     await order.save();
 
-    // Restore stock for cancelled orders
+    // Restore stock
     try {
       await Promise.all(
         order.items.map((item) =>
           Material.updateOne(
             { _id: item.material },
-            { $inc: { stock: item.quantity, totalSold: -item.quantity } },
+            {
+              $inc: {
+                stock: item.quantity,
+                totalSold: -item.quantity,
+                totalOrders: -1,
+                totalRevenue: -item.total,
+              },
+            },
           ),
         ),
       );
@@ -310,6 +371,7 @@ router.put("/:id/cancel", requireAuth, async (req, res, next) => {
   }
 });
 
+// ─── RATE ORDER ──────────────────────────────────────────────────────────────
 router.put("/:id/rate", requireAuth, requireRole("vendor"), async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
@@ -333,7 +395,7 @@ router.put("/:id/rate", requireAuth, requireRole("vendor"), async (req, res, nex
     order.rating = ratingData;
     await order.save();
 
-    // Update supplier's average rating
+    // Recompute supplier average rating
     const ratedOrders = await Order.find({
       supplier: order.supplier,
       "rating.rating": { $exists: true, $ne: null },
@@ -349,46 +411,6 @@ router.put("/:id/rate", requireAuth, requireRole("vendor"), async (req, res, nex
     }
 
     res.json({ order });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET /api/orders/stats — supplier stats summary
-router.get("/stats/summary", requireAuth, async (req, res, next) => {
-  try {
-    const filter =
-      req.user.role === "vendor"
-        ? { vendor: req.user._id }
-        : { supplier: req.user._id };
-
-    const [total, pending, confirmed, delivered, revenue] = await Promise.all([
-      Order.countDocuments(filter),
-      Order.countDocuments({ ...filter, status: "pending" }),
-      Order.countDocuments({ ...filter, status: { $in: ["confirmed", "processing", "shipped"] } }),
-      Order.countDocuments({ ...filter, status: "delivered" }),
-      Order.aggregate([
-        { $match: { ...filter, status: "delivered" } },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-      ]),
-    ]);
-
-    // Monthly revenue for current month
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthlyRevData = await Order.aggregate([
-      { $match: { ...filter, status: "delivered", createdAt: { $gte: monthStart } } },
-      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-    ]);
-
-    res.json({
-      total,
-      pending,
-      active: confirmed,
-      delivered,
-      totalRevenue: revenue[0]?.total || req.user.totalRevenue || 0,
-      monthlyRevenue: monthlyRevData[0]?.total || 0,
-    });
   } catch (err) {
     next(err);
   }
