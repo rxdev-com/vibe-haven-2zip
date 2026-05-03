@@ -124,22 +124,21 @@ export default function VendorMyListings() {
     <div className="min-h-screen bg-gray-50">
       <AppHeader title="My Listings" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <div className="flex items-center space-x-4">
-            <Link to="/vendor/dashboard">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
-              </Button>
+        <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
+          <div>
+            <Link
+              to="/vendor/dashboard"
+              className="inline-flex items-center text-sm text-gray-600 hover:text-saffron-600 mb-3"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
             </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
-              <p className="text-gray-600">
-                Manage your marketplace listings and track performance
-              </p>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">My Listings</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Manage your marketplace listings and track performance
+            </p>
           </div>
           <Link to="/vendor/sell-items">
-            <Button className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600">
+            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white">
               <Plus className="w-4 h-4 mr-2" /> Add New Listing
             </Button>
           </Link>
@@ -173,30 +172,28 @@ export default function VendorMyListings() {
         </motion.div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg border p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Search your listings..."
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="sold">Sold</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="flex flex-col md:flex-row gap-3 mb-8">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search your listings..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-40">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="sold">Sold</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="expired">Expired</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Listings */}
@@ -283,26 +280,17 @@ export default function VendorMyListings() {
                       <Button variant="outline" className="flex-1" size="sm">
                         <Eye className="w-4 h-4 mr-1" /> View
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleStatus(listing.id, listing.status)}
-                        disabled={listing.status === "sold"}
-                        title={listing.status === "active" ? "Pause" : "Activate"}
-                      >
-                        {listing.status === "active" ? (
-                          <Pause className="w-4 h-4" />
-                        ) : (
-                          <PlayCircle className="w-4 h-4" />
-                        )}
+                      <Button variant="outline" className="flex-1" size="sm">
+                        <Edit className="w-4 h-4 mr-1" /> Edit
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => setShowDeleteDialog(listing.id)}
+                        className="px-2"
+                        onClick={() => handleToggleStatus(listing.id, listing.status)}
+                        disabled={listing.status === "sold"}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <TrendingUp className="w-4 h-4" />
                       </Button>
                     </div>
                   </CardContent>
