@@ -36,6 +36,7 @@ import VendorRevenue from "./pages/VendorRevenue";
 import VendorActiveOrders from "./pages/VendorActiveOrders";
 import OrderTrackingLive from "./pages/OrderTrackingLive";
 import CartWithInstructions from "./pages/CartWithInstructions";
+import VendorStoreReviews from "./pages/VendorStoreReviews";
 import SupplierRevenue from "./pages/SupplierRevenue";
 import SupplierCompletedOrders from "./pages/SupplierCompletedOrders";
 import SupplierAnalytics from "./pages/SupplierAnalytics";
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/vendor/rating/:orderId" element={<Vendor><Rating /></Vendor>} />
                   <Route path="/vendor/ratings" element={<Vendor><RatingsReviews /></Vendor>} />
                   <Route path="/vendor/reviews" element={<Vendor><RatingsReviews /></Vendor>} />
+                  <Route path="/vendor/store-reviews" element={<Vendor><VendorStoreReviews /></Vendor>} />
                   <Route path="/vendor/saved-items" element={<Vendor><SavedItems /></Vendor>} />
                   <Route path="/material/:id" element={<Vendor><MaterialDetails /></Vendor>} />
                   <Route path="/cart" element={<Vendor><CartWithInstructions /></Vendor>} />

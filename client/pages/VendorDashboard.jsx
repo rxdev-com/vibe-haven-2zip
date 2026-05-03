@@ -196,7 +196,7 @@ export default function VendorDashboard() {
       value: (user?.rating || 0).toFixed(1),
       icon: Star,
       color: "text-yellow-500",
-      to: "/vendor/reviews",
+      to: "/vendor/store-reviews",
     },
     {
       label: "Available Materials",
