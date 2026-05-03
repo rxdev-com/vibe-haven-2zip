@@ -197,19 +197,21 @@ export default function VendorDashboard() {
       <AppHeader title="Vendor Dashboard" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {t?.("welcomeBack") || "Welcome back"}, {user?.name?.split(" ")[0] || "Vendor"}!
+            Welcome back, {user?.name?.split(" ")[0] || "Vendor"}!
           </h1>
-          <p className="text-gray-600">
-            Find the freshest raw materials for your street-food business
+          <p className="text-sm text-gray-600">
+            Find Suppliers - Find the best raw materials for your street-food business
           </p>
         </motion.div>
 
+        {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {stats.map((s, i) => (
             <motion.div
@@ -221,11 +223,13 @@ export default function VendorDashboard() {
               <Link to={s.to}>
                 <Card className="hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer h-full">
                   <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center">
-                      <s.icon className={`w-7 h-7 ${s.color} mr-3 flex-shrink-0`} />
-                      <div>
-                        <p className="text-xs sm:text-sm text-gray-600">{s.label}</p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <s.icon className={`w-6 h-6 ${s.color}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm text-gray-500">{s.label}</p>
+                        <p className="text-lg sm:text-2xl font-bold text-gray-900">
                           {s.value}
                         </p>
                       </div>
@@ -237,44 +241,157 @@ export default function VendorDashboard() {
           ))}
         </div>
 
-        <Card className="mb-6">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search materials, suppliers..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
+        {/* Vendor Marketplace Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h2 className="text-xl font-bold text-gray-900 mb-3">Vendor Marketplace</h2>
+          <p className="text-sm text-gray-600 mb-5">Buy and sell unused items with other vendors</p>
+          
+          <div className="grid sm:grid-cols-3 gap-4">
+            {/* Browse Items */}
+            <Link to="/vendor/marketplace">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <span className="text-lg">🛍️</span>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-700">Browse</Badge>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Browse Items</h3>
+                  <p className="text-sm text-gray-600 mb-4">Find unused items from other vendors at great prices</p>
+                  <Button variant="outline" size="sm" className="w-full justify-center">
+                    View All
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Sell Your Items */}
+            <Link to="/vendor/sell-items">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                      <span className="text-lg">💚</span>
+                    </div>
+                    <Badge className="bg-green-100 text-green-700">Sell</Badge>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Sell Your Items</h3>
+                  <p className="text-sm text-gray-600 mb-4">List unused inventory to other vendors quickly</p>
+                  <Button variant="outline" size="sm" className="w-full justify-center">
+                    List Items
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* My Listings */}
+            <Link to="/vendor/my-listings">
+              <Card className="hover:shadow-lg transition-all cursor-pointer h-full">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <span className="text-lg">📋</span>
+                    </div>
+                    <Badge className="bg-orange-100 text-orange-700">Manage</Badge>
+                  </div>
+                  <h3 className="font-semibold text-gray-900 mb-1">My Listings</h3>
+                  <p className="text-sm text-gray-600 mb-4">Manage your listed items and view enquiries</p>
+                  <Button variant="outline" size="sm" className="w-full justify-center">
+                    Manage
+                  </Button>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Database Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+              📊 Database Status
+            </h3>
+            <Button variant="ghost" size="sm" className="text-xs">Refresh</Button>
+          </div>
+
+          {/* Status Alerts */}
+          <div className="space-y-3 mb-4">
+            {/* Alert 1 */}
+            <Card className="border-l-4 border-l-green-500 bg-green-50">
+              <CardContent className="p-3">
+                <div className="flex items-start gap-3">
+                  <div className="text-lg mt-0.5">✅</div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-green-900 text-sm">JugaduBazar API is running in development mode</p>
+                    <p className="text-xs text-green-700 mt-0.5">Last checked: 6/25/2025, 5:30 AM</p>
+                    <div className="flex gap-2 mt-2">
+                      <Badge className="bg-green-600">Database Connected</Badge>
+                      <Badge className="bg-emerald-600">WebSocket Active</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alert 2 */}
+            <Card className="border-l-4 border-l-yellow-500 bg-yellow-50">
+              <CardContent className="p-3">
+                <p className="text-xs text-yellow-700 flex items-center gap-2">
+                  ⚠️ Location access denied. Please enable location services. Measuring all suppliers with approximate distances.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    placeholder="Search for raw materials..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="md:w-48">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="md:w-48">
+                    <SelectValue placeholder="Filtered" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rating">Top Rated</SelectItem>
+                    <SelectItem value="price-low">Price: Low to High</SelectItem>
+                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="name">Name A-Z</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="md:w-48">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="md:w-48">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rating">Top Rated</SelectItem>
-                  <SelectItem value="price-low">Price: Low to High</SelectItem>
-                  <SelectItem value="price-high">Price: High to Low</SelectItem>
-                  <SelectItem value="name">Name A-Z</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
