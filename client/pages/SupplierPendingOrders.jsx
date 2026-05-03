@@ -95,12 +95,14 @@ export default function SupplierPendingOrders() {
             { label: "Total Value", value: fmtINR(totalValue), icon: IndianRupee, color: "text-emerald-600" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <s.icon className={`w-6 h-6 ${s.color}`} />
-                  <div>
-                    <p className="text-xs text-gray-500">{s.label}</p>
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <Card className="border">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
+                    <s.icon className={`w-6 h-6 ${s.color} opacity-20 flex-shrink-0`} />
                   </div>
                 </CardContent>
               </Card>
@@ -129,19 +131,19 @@ export default function SupplierPendingOrders() {
 
                 return (
                   <motion.div key={o._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-                    <Card className={isUrgent ? "border-orange-300 shadow-sm" : ""}>
+                    <Card className={`border ${isUrgent ? "border-orange-300" : ""}`}>
                       <CardContent className="p-5">
                         {/* Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-gray-900">{o.orderNumber}</span>
-                            <Badge className="bg-yellow-100 text-yellow-700">pending</Badge>
-                            {isUrgent && <Badge className="bg-orange-100 text-orange-700">urgent</Badge>}
+                            <Badge className="bg-yellow-100 text-yellow-700 text-xs">pending</Badge>
+                            {isUrgent && <Badge className="bg-orange-100 text-orange-700 text-xs">urgent</Badge>}
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 text-xs"
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 text-xs h-8"
                               onClick={() => handleAccept(o._id)}
                               disabled={actionId === o._id}
                             >
@@ -150,58 +152,64 @@ export default function SupplierPendingOrders() {
                             </Button>
                             <Button
                               size="sm"
+                              className="text-red-600 border border-red-200 hover:bg-red-50 gap-1 text-xs h-8"
                               variant="outline"
-                              className="text-red-600 border-red-200 hover:bg-red-50 gap-1 text-xs"
                               onClick={() => handleReject(o._id)}
                               disabled={actionId === o._id}
                             >
                               <XCircle className="w-3 h-3" /> Reject
                             </Button>
-                            <Button size="sm" variant="ghost" className="w-8 h-8 p-0">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
                               <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 gap-1 text-xs"
-                              onClick={() => openWhatsApp(vPhone, vName, o.orderNumber)}
-                            >
-                              <MessageSquare className="w-3 h-3" /> Chat on WhatsApp
                             </Button>
                           </div>
                         </div>
 
                         {/* Vendor Info */}
-                        <div className="border rounded-lg p-3 bg-gray-50 mb-3">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Vendor Information</p>
+                        <div className="mb-4">
+                          <p className="text-xs font-semibold text-gray-600 mb-2">Vendor Information</p>
                           <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-saffron-100 text-saffron-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
                               {vName[0] || "V"}
                             </div>
                             <div className="flex-1">
-                              <p className="font-semibold text-sm">{vName}</p>
+                              <p className="font-semibold text-sm text-gray-900">{vName}</p>
                               <p className="text-xs text-gray-500">Vendor</p>
                             </div>
-                            <div className="text-xs text-gray-500 space-y-1">
-                              {vPhone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {vPhone}</div>}
-                              {vAddr && <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {vAddr}</div>}
-                            </div>
+                            {vPhone && <div className="text-xs text-gray-600 flex items-center gap-1"><Phone className="w-3 h-3" /> {vPhone}</div>}
                           </div>
+                          {vAddr && <p className="text-xs text-gray-600 ml-11 flex items-center gap-1"><MapPin className="w-3 h-3 flex-shrink-0" /> {vAddr}</p>}
                         </div>
 
                         {/* Order Items */}
                         <div className="mb-3">
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Order Items</p>
+                          <p className="text-xs font-semibold text-gray-600 mb-1">Order Items</p>
                           <p className="text-sm text-gray-700">{itemSummary}</p>
-                          {specialNote && (
-                            <div className="mt-2 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1.5">
-                              Special Notes: {specialNote}
-                            </div>
-                          )}
-                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                            <span>Amount: <span className="font-semibold text-gray-900">{fmtINR(o.totalAmount)}</span></span>
-                            <span>Date: {fmtDate(o.createdAt)}</span>
-                            <span>Payment: {o.paymentMethod === "cash" ? "On Delivery" : o.paymentStatus === "paid" ? "Paid" : "Pending"}</span>
+                        </div>
+
+                        {/* Special Notes */}
+                        {specialNote && (
+                          <div className="mb-3 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded px-3 py-2">
+                            <span className="font-semibold">Special Notes: </span>{specialNote}
                           </div>
+                        )}
+
+                        {/* Order Details */}
+                        <div className="flex gap-4 text-xs text-gray-600">
+                          <span>Amount: <span className="font-semibold text-gray-900">{fmtINR(o.totalAmount)}</span></span>
+                          <span>Date: {fmtDate(o.createdAt)}</span>
+                          <span>Payment: {o.paymentMethod === "cash" ? "On Delivery" : o.paymentStatus === "paid" ? "Paid" : "Pending"}</span>
+                        </div>
+
+                        {/* Chat Button */}
+                        <div className="mt-3">
+                          <Button
+                            size="sm"
+                            className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 gap-1 text-xs w-full h-8"
+                            onClick={() => openWhatsApp(vPhone, vName, o.orderNumber)}
+                          >
+                            <MessageSquare className="w-3 h-3" /> Chat on WhatsApp
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

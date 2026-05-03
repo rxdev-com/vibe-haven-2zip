@@ -136,20 +136,21 @@ export default function SupplierInventory() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { label: "Total Products", value: items.length, color: "text-emerald-600", icon: <Package className="w-5 h-5 text-emerald-500" /> },
-            { label: "In Stock", value: inStock, color: "text-blue-600", icon: <Package className="w-5 h-5 text-blue-500" /> },
-            { label: "Out of Stock", value: outOfStock, color: "text-red-600", icon: <Package className="w-5 h-5 text-red-500" /> },
-            { label: "Low Stock", value: lowStock, color: "text-orange-600", icon: <Package className="w-5 h-5 text-orange-500" /> },
+            { label: "Total Products", value: items.length, color: "text-emerald-600", icon: "🎯" },
+            { label: "In Stock", value: inStock, color: "text-emerald-600", icon: "✓" },
+            { label: "Out of Stock", value: outOfStock, color: "text-red-600", icon: "✕" },
+            { label: "Low Stock", value: lowStock, color: "text-orange-600", icon: "!" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  {s.icon}
-                  <div>
-                    <p className="text-xs text-gray-500">{s.label}</p>
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <Card className="border">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+                      <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -177,38 +178,40 @@ export default function SupplierInventory() {
             <Button onClick={openAdd} className="bg-emerald-500 hover:bg-emerald-600 text-white">Add First Product</Button>
           </CardContent></Card>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <AnimatePresence>
               {filtered.map((m, i) => (
                 <motion.div key={m._id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} transition={{ delay: i * 0.03 }}>
-                  <Card className="hover:shadow-sm transition-shadow">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-semibold text-gray-900">{m.name}</span>
-                          <Badge className={m.stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}>
-                            {m.stock > 0 ? "active" : "out of stock"}
-                          </Badge>
+                  <Card className="hover:shadow-sm transition-shadow border">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-gray-900">{m.name}</span>
+                            <Badge className={m.stock > 0 ? "bg-emerald-100 text-emerald-700 text-xs" : "bg-red-100 text-red-700 text-xs"}>
+                              {m.stock > 0 ? "active" : "out of stock"}
+                            </Badge>
+                          </div>
+                          {m.description && <p className="text-xs text-gray-600 mb-0.5">{m.description}</p>}
+                          <p className="text-xs text-gray-500">{m.category}</p>
+                          <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-gray-600">
+                            <span>Price: <span className="font-medium text-gray-700">{fmtINR(m.price)}/{m.unit}</span></span>
+                            <span>Stock: <span className={m.stock > 0 ? "text-emerald-600 font-medium" : "text-red-600 font-medium"}>{m.stock} {m.unit}</span></span>
+                            <span>Orders: <span className="text-gray-700 font-medium">{m.totalOrders || 0}</span></span>
+                            <span>Revenue: <span className="text-emerald-600 font-medium">{fmtINR(m.totalRevenue || 0)}</span></span>
+                          </div>
                         </div>
-                        {m.description && <p className="text-xs text-gray-500 mb-0.5">{m.description}</p>}
-                        <p className="text-xs text-gray-400">{m.category}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Price: <span className="font-medium text-gray-700">{fmtINR(m.price)}/{m.unit}</span>
-                          &nbsp;· Stock: <span className={m.stock > 0 ? "text-emerald-600 font-medium" : "text-red-600 font-medium"}>{m.stock} {m.unit}</span>
-                          &nbsp;· Orders: <span className="text-gray-700">{m.totalOrders || 0}</span>
-                          &nbsp;· Revenue: <span className="text-emerald-600">{fmtINR(m.totalRevenue || 0)}</span>
-                        </p>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setViewItem(m)}>
-                          <Eye className="w-4 h-4 text-gray-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => openEdit(m)}>
-                          <Edit className="w-4 h-4 text-blue-500" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => setDeleteId(m._id)}>
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </Button>
+                        <div className="flex gap-2 ml-4">
+                          <Button variant="ghost" size="icon" className="w-8 h-8 flex-shrink-0" onClick={() => setViewItem(m)}>
+                            <Eye className="w-4 h-4 text-gray-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 flex-shrink-0" onClick={() => openEdit(m)}>
+                            <Edit className="w-4 h-4 text-blue-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="w-8 h-8 flex-shrink-0" onClick={() => setDeleteId(m._id)}>
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
