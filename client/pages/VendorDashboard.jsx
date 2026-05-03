@@ -192,6 +192,13 @@ export default function VendorDashboard() {
       to: "/vendor/saved-items",
     },
     {
+      label: "Avg Rating",
+      value: (user?.rating || 0).toFixed(1),
+      icon: Star,
+      color: "text-yellow-500",
+      to: "/vendor/reviews",
+    },
+    {
       label: "Available Materials",
       value: materials.length,
       icon: TrendingUp,
@@ -220,7 +227,7 @@ export default function VendorDashboard() {
         </motion.div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           {stats.map((s, i) => (
             <motion.div
               key={s.label}
