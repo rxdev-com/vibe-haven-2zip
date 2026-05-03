@@ -49,7 +49,6 @@ router.post("/register", async (req, res, next) => {
       message: "Account created successfully",
       token,
       user: user.toPublicJSON(),
-      // In a real app this would be emailed; we return for dev convenience.
       devVerificationCode: code,
     });
   } catch (err) {
@@ -110,6 +109,26 @@ const updateProfileSchema = z.object({
   deliveryAreas: z.array(z.string()).optional(),
   businessType: z.string().optional(),
   license: z.string().optional(),
+  acceptingOrders: z.boolean().optional(),
+  // Legal info
+  gstNumber: z.string().optional(),
+  panNumber: z.string().optional(),
+  fssaiLicense: z.string().optional(),
+  establishedYear: z.string().optional(),
+  // Delivery config
+  deliveryFee: z.number().optional(),
+  freeDeliveryAbove: z.number().optional(),
+  minOrderAmount: z.number().optional(),
+  maxDeliveryDistance: z.number().optional(),
+  estimatedDeliveryTime: z.string().optional(),
+  // Business images
+  businessImages: z.array(z.object({
+    url: z.string().optional(),
+    title: z.string().optional(),
+    description: z.string().optional(),
+    tag: z.string().optional(),
+    isMain: z.boolean().optional(),
+  })).optional(),
   location: z
     .object({ coordinates: z.tuple([z.number(), z.number()]) })
     .optional(),
@@ -135,9 +154,7 @@ router.post("/resend-verification", requireAuth, async (req, res, next) => {
       return res.json({ message: "Email already verified" });
     }
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const user = await User.findById(req.user._id).select(
-      "+emailVerificationCode",
-    );
+    const user = await User.findById(req.user._id).select("+emailVerificationCode");
     user.emailVerificationCode = code;
     user.emailVerificationSentAt = new Date();
     await user.save();
@@ -153,9 +170,7 @@ router.post("/resend-verification", requireAuth, async (req, res, next) => {
 router.post("/verify-email", requireAuth, async (req, res, next) => {
   try {
     const { code } = z.object({ code: z.string().length(6) }).parse(req.body);
-    const user = await User.findById(req.user._id).select(
-      "+emailVerificationCode",
-    );
+    const user = await User.findById(req.user._id).select("+emailVerificationCode");
     if (!user.emailVerificationCode || user.emailVerificationCode !== code) {
       return res.status(400).json({ error: "Invalid verification code" });
     }
@@ -169,7 +184,6 @@ router.post("/verify-email", requireAuth, async (req, res, next) => {
 });
 
 router.post("/logout", requireAuth, (req, res) => {
-  // Stateless JWT — client just discards the token.
   res.json({ message: "Logged out" });
 });
 

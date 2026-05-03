@@ -23,16 +23,28 @@ const DEMO_SUPPLIER = {
   phone: "+91 99887 66554",
   role: "supplier",
   businessName: "Priya Raw Materials Supply",
-  address: "Industrial Area, Ghaziabad, UP",
-  description: "Premium quality raw materials supplier for food businesses",
+  address: "Industrial Area, Sector 62, Noida, Uttar Pradesh",
+  description: "Leading supplier of premium quality oils and fats for the food industry. Serving Delhi NCR since 1998 with authentic and pure products.",
   categories: ["Spices", "Oil", "Grains", "Pulses"],
-  deliveryAreas: ["Noida", "Ghaziabad", "Delhi", "Faridabad"],
-  businessType: "Wholesaler",
+  deliveryAreas: ["Delhi", "Noida", "Gurgaon", "Faridabad", "Greater Noida"],
+  businessType: "Wholesale Distributor",
   license: "FSSAI-12345678901234",
+  gstNumber: "09AABCU9603R1ZX",
+  panNumber: "AABCU9603R",
+  fssaiLicense: "FSSAI-12345678901234",
+  establishedYear: "1998",
+  deliveryFee: 50,
+  freeDeliveryAbove: 1000,
+  minOrderAmount: 500,
+  maxDeliveryDistance: 25,
+  estimatedDeliveryTime: "2-4 hours",
+  acceptingOrders: true,
   isVerified: true,
   emailVerified: true,
-  rating: 4.7,
-  totalRatings: 128,
+  rating: 4.8,
+  totalRatings: 186,
+  totalOrders: 186,
+  totalRevenue: 720000,
   location: { type: "Point", coordinates: [77.4538, 28.6692] },
 };
 
@@ -118,6 +130,20 @@ const DEMO_MATERIALS = [
     minOrderQuantity: 10,
     maxOrderQuantity: 500,
   },
+  {
+    name: "Premium Basmati Rice",
+    category: "Grains",
+    price: 120,
+    unit: "kg",
+    stock: 400,
+    description: "Extra long grain premium basmati rice",
+    image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400",
+    tags: ["rice", "basmati", "premium"],
+    minOrderQuantity: 5,
+    maxOrderQuantity: 300,
+    shelfLife: "18 months",
+    origin: "Punjab",
+  },
 ];
 
 export async function seedDemoData() {
@@ -142,7 +168,6 @@ export async function seedDemoData() {
   console.log(`   • ${DEMO_MATERIALS.length} demo materials`);
 }
 
-// Allow running with `node utils/seed.js`
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { connectDB, disconnectDB } = await import("../config/db.js");
   await connectDB();

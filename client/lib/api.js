@@ -80,11 +80,12 @@ export const ordersAPI = {
   getAll: (params) => apiRequest(`/orders${qs(params)}`),
   getById: (id) => apiRequest(`/orders/${id}`),
   create: (data) => apiRequest("/orders", { method: "POST", body: JSON.stringify(data) }),
-  updateStatus: (id, status, supplierNotes) =>
-    apiRequest(`/orders/${id}/status`, { method: "PUT", body: JSON.stringify({ status, supplierNotes }) }),
+  updateStatus: (id, status, note) =>
+    apiRequest(`/orders/${id}/status`, { method: "PUT", body: JSON.stringify({ status, note, supplierNotes: note }) }),
   cancel: (id, cancellationReason) =>
     apiRequest(`/orders/${id}/cancel`, { method: "PUT", body: JSON.stringify({ cancellationReason }) }),
   rate: (id, rating) => apiRequest(`/orders/${id}/rate`, { method: "PUT", body: JSON.stringify(rating) }),
+  getStats: () => apiRequest("/orders/stats/summary"),
 };
 
 export const notificationsAPI = {

@@ -4,9 +4,20 @@ import bcrypt from "bcryptjs";
 const pointSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["Point"], default: "Point" },
-    coordinates: { type: [Number], default: [0, 0] }, // [lng, lat]
+    coordinates: { type: [Number], default: [0, 0] },
   },
   { _id: false },
+);
+
+const businessImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, default: "" },
+    title: { type: String, default: "" },
+    description: { type: String, default: "" },
+    tag: { type: String, default: "" },
+    isMain: { type: Boolean, default: false },
+  },
+  { _id: true },
 );
 
 const userSchema = new mongoose.Schema(
@@ -27,11 +38,7 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
     phone: { type: String, required: true, trim: true },
-    role: {
-      type: String,
-      enum: ["vendor", "supplier"],
-      required: true,
-    },
+    role: { type: String, enum: ["vendor", "supplier"], required: true },
     businessName: { type: String, required: true, trim: true },
     address: { type: String, required: true, trim: true },
     description: { type: String, default: "" },
@@ -45,6 +52,23 @@ const userSchema = new mongoose.Schema(
     deliveryAreas: { type: [String], default: [] },
     businessType: { type: String, default: "" },
     license: { type: String, default: "" },
+    acceptingOrders: { type: Boolean, default: true },
+
+    // Supplier legal info
+    gstNumber: { type: String, default: "" },
+    panNumber: { type: String, default: "" },
+    fssaiLicense: { type: String, default: "" },
+    establishedYear: { type: String, default: "" },
+
+    // Supplier delivery config
+    deliveryFee: { type: Number, default: 50 },
+    freeDeliveryAbove: { type: Number, default: 1000 },
+    minOrderAmount: { type: Number, default: 500 },
+    maxDeliveryDistance: { type: Number, default: 25 },
+    estimatedDeliveryTime: { type: String, default: "2-4 hours" },
+
+    // Business images (supplier gallery)
+    businessImages: { type: [businessImageSchema], default: [] },
 
     location: { type: pointSchema, default: () => ({}) },
 
@@ -55,6 +79,8 @@ const userSchema = new mongoose.Schema(
 
     rating: { type: Number, default: 0 },
     totalRatings: { type: Number, default: 0 },
+    totalOrders: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
