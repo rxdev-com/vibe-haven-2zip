@@ -266,51 +266,53 @@ export default function SupplierDashboard() {
             {/* Inventory Tab */}
             {tab === 1 && (
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-lg">Inventory Management</h3>
-                  <Link to="/supplier/inventory">
-                    <Button className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1">
-                      <Plus className="w-4 h-4" /> Add Product
-                    </Button>
-                  </Link>
-                </div>
-                {materials.length === 0 ? (
-                  <Card><CardContent className="text-center py-12">
-                    <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                    <p className="text-gray-500 mb-3">No products yet</p>
-                    <Link to="/supplier/inventory"><Button>Add your first product</Button></Link>
-                  </CardContent></Card>
-                ) : (
-                  <div className="space-y-2">
-                    {materials.map(m => (
-                      <Card key={m._id} className="hover:shadow-sm transition-shadow">
-                        <CardContent className="p-4 flex items-center gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="font-medium text-gray-900">{m.name}</span>
-                              <Badge className={m.stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}>
-                                {m.stock > 0 ? "active" : "out of stock"}
-                              </Badge>
+                <Card className="bg-white">
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-semibold text-lg">Inventory Management</h3>
+                      <Link to="/supplier/inventory">
+                        <Button className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1">
+                          <Plus className="w-4 h-4" /> Add Product
+                        </Button>
+                      </Link>
+                    </div>
+                    {materials.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                        <p className="text-gray-500 mb-3">No products yet</p>
+                        <Link to="/supplier/inventory"><Button>Add your first product</Button></Link>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {materials.map(m => (
+                          <div key={m._id} className="flex items-center gap-4 p-3 border rounded-lg hover:shadow-sm transition-shadow">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="font-medium text-gray-900">{m.name}</span>
+                                <Badge className={m.stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}>
+                                  {m.stock > 0 ? "active" : "out of stock"}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-gray-500">{m.category}</p>
+                              <p className="text-xs text-gray-400">
+                                Price: {fmtINR(m.price)}/{m.unit} · Stock: {m.stock} {m.unit} · Orders: {m.totalOrders || 0} · Revenue: {fmtINR(m.totalRevenue || 0)}
+                              </p>
                             </div>
-                            <p className="text-xs text-gray-500">{m.category}</p>
-                            <p className="text-xs text-gray-400">
-                              Price: {fmtINR(m.price)}/{m.unit} · Stock: {m.stock} {m.unit} · Orders: {m.totalOrders || 0} · Revenue: {fmtINR(m.totalRevenue || 0)}
-                            </p>
+                            <div className="flex gap-2">
+                              <Button variant="ghost" size="icon" className="w-8 h-8"><Eye className="w-4 h-4 text-gray-500" /></Button>
+                              <Link to="/supplier/inventory">
+                                <Button variant="ghost" size="icon" className="w-8 h-8"><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                              </Link>
+                              <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => handleDeleteMaterial(m._id)}>
+                                <Trash2 className="w-4 h-4 text-red-400" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" className="w-8 h-8"><Eye className="w-4 h-4 text-gray-500" /></Button>
-                            <Link to="/supplier/inventory">
-                              <Button variant="ghost" size="icon" className="w-8 h-8"><Pencil className="w-4 h-4 text-blue-500" /></Button>
-                            </Link>
-                            <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => handleDeleteMaterial(m._id)}>
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             )}
 
@@ -324,7 +326,7 @@ export default function SupplierDashboard() {
                     <p className="text-gray-500">No orders yet</p>
                   </CardContent></Card>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {orders.map(o => {
                       const vendor = o.vendorId || o.vendor || {};
                       const vName = vendor.businessName || vendor.name || "Vendor";
@@ -333,13 +335,13 @@ export default function SupplierDashboard() {
                       const itemSummary = (o.items || []).map(i => `${i.name} (${i.quantity}${i.unit})`).join(", ");
                       return (
                         <Card key={o._id} className={o.status === "pending" ? "border-orange-200" : ""}>
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-3">
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between mb-4">
                               <div className="flex items-center gap-2">
-                                <span className="font-semibold">{o.orderNumber}</span>
+                                <span className="font-semibold text-gray-900">{o.orderNumber}</span>
                                 <Badge className={STATUS_BADGE[o.status]}>{o.status}</Badge>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap justify-end">
                                 {o.status === "pending" && (
                                   <>
                                     <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 text-xs" onClick={() => handleAccept(o._id)}>
@@ -355,7 +357,6 @@ export default function SupplierDashboard() {
                                     <Clock className="w-3 h-3" /> Mark Delivered
                                   </Button>
                                 )}
-                                <Button size="sm" variant="ghost" size="icon" className="w-8 h-8"><Eye className="w-4 h-4" /></Button>
                                 <Button
                                   size="sm"
                                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 gap-1 text-xs"
@@ -365,16 +366,18 @@ export default function SupplierDashboard() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="text-sm space-y-0.5">
-                              <p className="font-medium text-gray-700">Vendor Information</p>
-                              <p><span className="text-gray-500">Name:</span> {vName} &nbsp;&nbsp; <span className="text-gray-500">Phone:</span> {vPhone}</p>
-                              {vAddr && <p><span className="text-gray-500">Location:</span> {vAddr}</p>}
-                              <p className="mt-1"><span className="font-medium">Order Items</span></p>
-                              <p className="text-gray-600">{itemSummary}</p>
-                              <p className="text-xs text-gray-400 mt-1">
-                                Amount: <span className="font-medium text-gray-700">{fmtINR(o.totalAmount)}</span> &nbsp;
-                                Date: {fmtDate(o.createdAt)} &nbsp;
-                                Payment: {o.paymentStatus === "paid" ? "Completed" : "Pending"}
+                            <div className="text-sm space-y-2">
+                              <div>
+                                <p className="font-medium text-gray-700">Vendor Information</p>
+                                <p className="text-xs text-gray-600">Name: {vName} &nbsp;&nbsp; Phone: {vPhone}</p>
+                                {vAddr && <p className="text-xs text-gray-600">Location: {vAddr}</p>}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-700">Order Items</p>
+                                <p className="text-xs text-gray-600">{itemSummary}</p>
+                              </div>
+                              <p className="text-xs text-gray-500">
+                                Amount: <span className="font-medium text-gray-700">{fmtINR(o.totalAmount)}</span> &nbsp; Date: {fmtDate(o.createdAt)} &nbsp; Payment: {o.paymentStatus === "paid" ? "Completed" : "Pending"}
                               </p>
                             </div>
                           </CardContent>
