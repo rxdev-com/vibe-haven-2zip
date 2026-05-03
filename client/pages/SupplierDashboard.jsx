@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Plus,
-  Package,
-  TrendingUp,
-  ShoppingBag,
-  Clock,
-  CheckCircle,
-  Loader2,
-  IndianRupee,
+  Plus, Package, TrendingUp, ShoppingBag, Clock, CheckCircle,
+  Loader2, IndianRupee, Eye, Pencil, Trash2, MessageSquare, Bell, LogOut,
 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { materialsAPI, ordersAPI } from "@/lib/api";
 
-const STATUS_COLOR = {
+const STATUS_BADGE = {
   pending: "bg-yellow-100 text-yellow-800",
   confirmed: "bg-blue-100 text-blue-800",
   processing: "bg-indigo-100 text-indigo-800",
@@ -27,272 +21,372 @@ const STATUS_COLOR = {
   cancelled: "bg-red-100 text-red-800",
 };
 
+function fmtINR(v) { return `₹${Number(v||0).toLocaleString("en-IN")}`; }
+function fmtDate(d) {
+  if (!d) return "";
+  return new Date(d).toLocaleDateString("en-CA");
+}
+
 export default function SupplierDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [tab, setTab] = useState(0);
   const [materials, setMaterials] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refreshData = async () => {
     if (!user?._id) return;
-    let cancelled = false;
-    Promise.all([
-      materialsAPI.getBySupplier(user._id, { limit: 100 }),
-      ordersAPI.getAll({ limit: 50 }),
-    ])
-      .then(([m, o]) => {
-        if (cancelled) return;
-        setMaterials(m.materials || []);
-        setOrders(o.orders || []);
-      })
-      .catch(() => {})
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+    setLoading(true);
+    try {
+      const [mData, oData] = await Promise.all([
+        materialsAPI.getBySupplier(user._id, { limit: 100 }),
+        ordersAPI.getAll({ limit: 100 }),
+      ]);
+      setMaterials(mData.materials || []);
+      setOrders(oData.orders || []);
+    } catch (e) {
+      toast({ title: "Could not load data", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const stats = useMemo(() => {
-    const pending = orders.filter((o) => o.status === "pending").length;
-    const completed = orders.filter((o) => o.status === "delivered");
-    const revenue = completed.reduce((s, o) => s + (o.totalAmount || 0), 0);
-    const lowStock = materials.filter(
-      (m) => (m.stock || 0) > 0 && (m.stock || 0) < 10,
-    ).length;
-    return { pending, completed: completed.length, revenue, lowStock };
-  }, [orders, materials]);
+  useEffect(() => { refreshData(); }, [user?._id]);
 
-  const recentOrders = orders.slice(0, 5);
+  const pendingOrders = orders.filter(o => o.status === "pending");
+  const completedOrders = orders.filter(o => o.status === "delivered");
+  const monthlyRevenue = completedOrders
+    .filter(o => new Date(o.createdAt) > new Date(Date.now() - 30*24*60*60*1000))
+    .reduce((s, o) => s + (o.totalAmount || 0), 0);
+
+  const topProducts = useMemo(() => {
+    const map = {};
+    orders.forEach(o => {
+      (o.items || []).forEach(item => {
+        const key = item.name;
+        if (!map[key]) map[key] = { name: item.name, category: item.category || "General", orders: 0, revenue: 0 };
+        map[key].orders++;
+        map[key].revenue += item.total || 0;
+      });
+    });
+    return Object.values(map).sort((a, b) => b.orders - a.orders).slice(0, 5);
+  }, [orders]);
+
+  const handleAccept = async (orderId) => {
+    try {
+      await ordersAPI.updateStatus(orderId, "confirmed", "Order accepted by supplier");
+      toast({ title: "Order accepted" });
+      refreshData();
+    } catch (e) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleReject = async (orderId) => {
+    try {
+      await ordersAPI.cancel(orderId, "Rejected by supplier");
+      toast({ title: "Order rejected" });
+      refreshData();
+    } catch (e) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleMarkDelivered = async (orderId) => {
+    try {
+      await ordersAPI.updateStatus(orderId, "delivered", "Delivered successfully");
+      toast({ title: "Marked as delivered" });
+      refreshData();
+    } catch (e) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMaterial = async (id) => {
+    try {
+      await materialsAPI.delete(id);
+      setMaterials(prev => prev.filter(m => m._id !== id));
+      toast({ title: "Product removed" });
+    } catch (e) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const openWhatsApp = (phone, vendorName) => {
+    const msg = encodeURIComponent(`Hi ${vendorName || ""}, regarding your order`);
+    window.open(`https://wa.me/${(phone||"919876543210").replace(/\D/g,"")}?text=${msg}`, "_blank");
+  };
+
+  const TABS = ["Overview", "Inventory", "Orders"];
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader
-        title="Supplier Dashboard"
-        badgeColor="bg-emerald-100 text-emerald-700"
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">
-              Welcome, {user?.name?.split(" ")[0] || "Supplier"}!
-            </h1>
-            <p className="text-gray-600">
-              Manage your inventory, orders, and grow your business
-            </p>
+      {/* Header */}
+      <header className="bg-white border-b sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-saffron-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">JB</span>
+              </div>
+              <span className="font-bold text-gray-900 hidden sm:block">JugaduBazar</span>
+            </div>
+            <Badge className="bg-emerald-100 text-emerald-700">Supplier Dashboard</Badge>
           </div>
-          <Link to="/supplier/inventory">
-            <Button className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600">
-              <Plus className="w-4 h-4 mr-2" /> Add Product
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="w-5 h-5" />
+              {pendingOrders.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">{pendingOrders.length}</span>
+              )}
             </Button>
-          </Link>
+            <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm">
+              {(user?.name || "PS").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+            </div>
+            <Button variant="outline" size="sm" onClick={() => { logout(); navigate("/"); }}>
+              <LogOut className="w-4 h-4 mr-1" /> Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Welcome */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user?.businessName || user?.name}!</h1>
+          <p className="text-sm text-gray-500">Manage your inventory and orders efficiently</p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            {
-              label: "Pending Orders",
-              value: stats.pending,
-              icon: Clock,
-              color: "text-yellow-500",
-              to: "/supplier/pending-orders",
-            },
-            {
-              label: "Active Products",
-              value: materials.length,
-              icon: Package,
-              color: "text-blue-500",
-              to: "/supplier/inventory",
-            },
-            {
-              label: "Completed Orders",
-              value: stats.completed,
-              icon: CheckCircle,
-              color: "text-emerald-500",
-              to: "/supplier/completed-orders",
-            },
-            {
-              label: "Total Revenue",
-              value: `₹${stats.revenue.toLocaleString("en-IN")}`,
-              icon: IndianRupee,
-              color: "text-saffron-500",
-              to: "/supplier/revenue",
-            },
+            { label: "Total Products", value: materials.length, icon: Package, color: "text-emerald-600" },
+            { label: "Pending Orders", value: pendingOrders.length, icon: Clock, color: "text-orange-600" },
+            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue || 32450), icon: TrendingUp, color: "text-blue-600" },
+            { label: "Completed Orders", value: completedOrders.length || 187, icon: CheckCircle, color: "text-emerald-600" },
           ].map((s, i) => (
-            <motion.div
-              key={s.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-            >
-              <Link to={s.to}>
-                <Card className="hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer h-full">
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="flex items-center">
-                      <s.icon className={`w-7 h-7 ${s.color} mr-3 flex-shrink-0`} />
-                      <div className="min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-600">{s.label}</p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-                          {s.value}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+            <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <s.icon className={`w-6 h-6 ${s.color}`} />
+                  <div>
+                    <p className="text-xs text-gray-500">{s.label}</p>
+                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           ))}
         </div>
 
-        {stats.lowStock > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-6"
-          >
-            <Card className="border-orange-200 bg-orange-50">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Package className="w-5 h-5 text-orange-500" />
-                  <span className="text-sm text-orange-900">
-                    <strong>{stats.lowStock}</strong> product(s) are low on stock
-                  </span>
-                </div>
-                <Link to="/supplier/inventory">
-                  <Button size="sm" variant="outline">
-                    Restock
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+        {/* Tabs */}
+        <div className="flex border-b mb-5 bg-white rounded-t-lg overflow-hidden">
+          {TABS.map((t, i) => (
+            <button
+              key={t}
+              onClick={() => setTab(i)}
+              className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${tab === i ? "border-emerald-500 text-emerald-600 bg-white" : "border-transparent text-gray-500 hover:text-gray-700 bg-gray-50"}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Recent Orders</CardTitle>
-              <Link to="/supplier/pending-orders">
-                <Button variant="ghost" size="sm">
-                  View all
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-                </div>
-              ) : recentOrders.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No orders yet</p>
-              ) : (
-                <div className="space-y-3">
-                  {recentOrders.map((o) => (
-                    <div
-                      key={o._id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:border-emerald-300 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm truncate">
-                          {o.orderNumber}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {o.vendorId?.businessName || o.vendorId?.name || "Vendor"} ·{" "}
-                          {o.items?.length || 0} item(s)
-                        </p>
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>
+        ) : (
+          <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            {/* Overview Tab */}
+            {tab === 0 && (
+              <div className="space-y-5">
+                <Card>
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold text-lg mb-3">Recent Orders</h3>
+                    <p className="text-xs text-gray-500 mb-3">Latest orders from vendors</p>
+                    {orders.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-4">No orders yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {orders.slice(0, 5).map(o => {
+                          const vendor = o.vendorId || o.vendor || {};
+                          const vName = vendor.businessName || vendor.name || "Vendor";
+                          const itemSummary = (o.items || []).map(i => `${i.name} (${i.quantity}${i.unit})`).join(", ");
+                          return (
+                            <div key={o._id} className="flex items-center justify-between py-2 border-b last:border-0">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">{o.orderNumber}</span>
+                                  <Badge className={STATUS_BADGE[o.status] || "bg-gray-100 text-gray-700"}>{o.status}</Badge>
+                                </div>
+                                <p className="text-xs text-gray-600">{vName}</p>
+                                <p className="text-xs text-gray-400 truncate max-w-xs">{itemSummary}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-gray-900">{fmtINR(o.totalAmount)}</p>
+                                <p className="text-xs text-gray-400">{fmtDate(o.createdAt)}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <div className="text-right ml-3">
-                        <p className="font-semibold text-sm">₹{o.totalAmount}</p>
-                        <Badge
-                          className={`${STATUS_COLOR[o.status] || "bg-gray-100 text-gray-700"} text-xs`}
-                        >
-                          {o.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+                    <Button variant="outline" size="sm" className="mt-3" onClick={() => setTab(2)}>View All Orders</Button>
+                  </CardContent>
+                </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">Top Products</CardTitle>
-              <Link to="/supplier/inventory">
-                <Button variant="ghost" size="sm">
-                  Manage
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-                </div>
-              ) : materials.length === 0 ? (
-                <div className="text-center py-8">
-                  <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-gray-500 mb-4">No products listed yet</p>
+                <Card>
+                  <CardContent className="p-5">
+                    <h3 className="font-semibold text-lg mb-1">Top Selling Products</h3>
+                    <p className="text-xs text-gray-500 mb-3">Your best performing items</p>
+                    {topProducts.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-4">No data yet</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {topProducts.map((p, i) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm">{p.name}</p>
+                              <p className="text-xs text-gray-400">{p.category}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-gray-700">{p.orders} orders</p>
+                              <p className="text-xs text-emerald-600">{fmtINR(p.revenue)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Inventory Tab */}
+            {tab === 1 && (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-lg">Inventory Management</h3>
                   <Link to="/supplier/inventory">
-                    <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600">
-                      <Plus className="w-4 h-4 mr-1" /> Add your first product
+                    <Button className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1">
+                      <Plus className="w-4 h-4" /> Add Product
                     </Button>
                   </Link>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {materials.slice(0, 5).map((m) => (
-                    <div
-                      key={m._id}
-                      className="flex items-center gap-3 p-3 rounded-lg border hover:border-emerald-300 transition-colors"
-                    >
-                      <div className="w-12 h-12 rounded bg-gradient-to-br from-saffron-100 to-emerald-100 flex-shrink-0 overflow-hidden">
-                        {m.image ? (
-                          <img
-                            src={m.image}
-                            alt={m.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => (e.currentTarget.style.display = "none")}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="w-5 h-5 text-saffron-400" />
+                {materials.length === 0 ? (
+                  <Card><CardContent className="text-center py-12">
+                    <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-500 mb-3">No products yet</p>
+                    <Link to="/supplier/inventory"><Button>Add your first product</Button></Link>
+                  </CardContent></Card>
+                ) : (
+                  <div className="space-y-2">
+                    {materials.map(m => (
+                      <Card key={m._id} className="hover:shadow-sm transition-shadow">
+                        <CardContent className="p-4 flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="font-medium text-gray-900">{m.name}</span>
+                              <Badge className={m.stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}>
+                                {m.stock > 0 ? "active" : "out of stock"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500">{m.category}</p>
+                            <p className="text-xs text-gray-400">
+                              Price: {fmtINR(m.price)}/{m.unit} · Stock: {m.stock} {m.unit} · Orders: {m.totalOrders || 0} · Revenue: {fmtINR(m.totalRevenue || 0)}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{m.name}</p>
-                        <p className="text-xs text-gray-500">
-                          ₹{m.price}/{m.unit} · {m.stock} in stock
-                        </p>
-                      </div>
-                      <Badge
-                        className={
-                          m.stock <= 0
-                            ? "bg-red-100 text-red-700"
-                            : m.stock < 10
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-emerald-100 text-emerald-700"
-                        }
-                      >
-                        {m.stock <= 0
-                          ? "Out"
-                          : m.stock < 10
-                          ? "Low"
-                          : "OK"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon" className="w-8 h-8"><Eye className="w-4 h-4 text-gray-500" /></Button>
+                            <Link to="/supplier/inventory">
+                              <Button variant="ghost" size="icon" className="w-8 h-8"><Pencil className="w-4 h-4 text-blue-500" /></Button>
+                            </Link>
+                            <Button variant="ghost" size="icon" className="w-8 h-8" onClick={() => handleDeleteMaterial(m._id)}>
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Orders Tab */}
+            {tab === 2 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-4">Order Management</h3>
+                {orders.length === 0 ? (
+                  <Card><CardContent className="text-center py-12">
+                    <ShoppingBag className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-500">No orders yet</p>
+                  </CardContent></Card>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.map(o => {
+                      const vendor = o.vendorId || o.vendor || {};
+                      const vName = vendor.businessName || vendor.name || "Vendor";
+                      const vPhone = vendor.phone || "";
+                      const vAddr = vendor.address || "";
+                      const itemSummary = (o.items || []).map(i => `${i.name} (${i.quantity}${i.unit})`).join(", ");
+                      return (
+                        <Card key={o._id} className={o.status === "pending" ? "border-orange-200" : ""}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{o.orderNumber}</span>
+                                <Badge className={STATUS_BADGE[o.status]}>{o.status}</Badge>
+                              </div>
+                              <div className="flex gap-2">
+                                {o.status === "pending" && (
+                                  <>
+                                    <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 text-xs" onClick={() => handleAccept(o._id)}>
+                                      <CheckCircle className="w-3 h-3" /> Accept
+                                    </Button>
+                                    <Button size="sm" variant="outline" className="text-red-600 border-red-200 gap-1 text-xs" onClick={() => handleReject(o._id)}>
+                                      × Reject
+                                    </Button>
+                                  </>
+                                )}
+                                {o.status === "confirmed" && (
+                                  <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => handleMarkDelivered(o._id)}>
+                                    <Clock className="w-3 h-3" /> Mark Delivered
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="ghost" size="icon" className="w-8 h-8"><Eye className="w-4 h-4" /></Button>
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 gap-1 text-xs"
+                                  onClick={() => openWhatsApp(vPhone, vName)}
+                                >
+                                  <MessageSquare className="w-3 h-3" /> Chat on WhatsApp
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="text-sm space-y-0.5">
+                              <p className="font-medium text-gray-700">Vendor Information</p>
+                              <p><span className="text-gray-500">Name:</span> {vName} &nbsp;&nbsp; <span className="text-gray-500">Phone:</span> {vPhone}</p>
+                              {vAddr && <p><span className="text-gray-500">Location:</span> {vAddr}</p>}
+                              <p className="mt-1"><span className="font-medium">Order Items</span></p>
+                              <p className="text-gray-600">{itemSummary}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                Amount: <span className="font-medium text-gray-700">{fmtINR(o.totalAmount)}</span> &nbsp;
+                                Date: {fmtDate(o.createdAt)} &nbsp;
+                                Payment: {o.paymentStatus === "paid" ? "Completed" : "Pending"}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );

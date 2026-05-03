@@ -2,64 +2,33 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  ArrowLeft,
-  Package,
-  Phone,
-  MapPin,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Clock,
+  ArrowLeft, Package, Clock, CheckCircle, XCircle,
+  Loader2, Phone, MapPin, MessageSquare, Eye, IndianRupee,
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { useToast } from "@/hooks/use-toast";
 import { ordersAPI } from "@/lib/api";
 
-const STATUS_FLOW = ["pending", "confirmed", "processing", "shipped", "delivered"];
-const STATUS_BADGE = {
-  pending: "bg-yellow-100 text-yellow-800",
-  confirmed: "bg-blue-100 text-blue-800",
-  processing: "bg-indigo-100 text-indigo-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-red-100 text-red-800",
-};
+function fmtINR(v) { return `₹${Number(v||0).toLocaleString("en-IN")}`; }
+function fmtDate(d) {
+  if (!d) return "";
+  return new Date(d).toLocaleDateString("en-CA");
+}
 
 export default function SupplierPendingOrders() {
   const { toast } = useToast();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("active");
-  const [updating, setUpdating] = useState(null);
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [statusOrder, setStatusOrder] = useState(null);
-  const [newStatus, setNewStatus] = useState("");
-  const [notes, setNotes] = useState("");
+  const [actionId, setActionId] = useState(null);
 
   const refresh = async () => {
     setLoading(true);
     try {
-      const data = await ordersAPI.getAll({ limit: 100 });
-      setOrders(data.orders || []);
+      const d = await ordersAPI.getAll({ limit: 100 });
+      setOrders((d.orders || []).filter(o => o.status === "pending"));
     } catch (e) {
       toast({ title: "Could not load", description: e.message, variant: "destructive" });
     } finally {
@@ -67,288 +36,182 @@ export default function SupplierPendingOrders() {
     }
   };
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { refresh(); }, []);
 
-  const visibleOrders = orders.filter((o) => {
-    if (filter === "active")
-      return ["pending", "confirmed", "processing", "shipped"].includes(o.status);
-    if (filter === "completed") return o.status === "delivered";
-    if (filter === "cancelled") return o.status === "cancelled";
-    return true;
-  });
-
-  const openStatusDialog = (order, defaultStatus) => {
-    setStatusOrder(order);
-    setNewStatus(defaultStatus || nextStatus(order.status));
-    setNotes("");
-    setStatusOpen(true);
-  };
-
-  const nextStatus = (current) => {
-    const idx = STATUS_FLOW.indexOf(current);
-    if (idx === -1 || idx === STATUS_FLOW.length - 1) return current;
-    return STATUS_FLOW[idx + 1];
-  };
-
-  const handleQuickAccept = async (order) => {
-    setUpdating(order._id);
+  const handleAccept = async (orderId) => {
+    setActionId(orderId);
     try {
-      await ordersAPI.updateStatus(order._id, "confirmed", "Order accepted");
-      toast({ title: "Order accepted" });
-      await refresh();
+      await ordersAPI.updateStatus(orderId, "confirmed", "Order accepted by supplier");
+      toast({ title: "Order accepted successfully" });
+      refresh();
     } catch (e) {
       toast({ title: "Failed", description: e.message, variant: "destructive" });
     } finally {
-      setUpdating(null);
+      setActionId(null);
     }
   };
 
-  const handleReject = async (order) => {
-    setUpdating(order._id);
+  const handleReject = async (orderId) => {
+    setActionId(orderId);
     try {
-      await ordersAPI.cancel(order._id, "Supplier could not fulfill");
+      await ordersAPI.cancel(orderId, "Rejected by supplier");
       toast({ title: "Order rejected" });
-      await refresh();
+      refresh();
     } catch (e) {
       toast({ title: "Failed", description: e.message, variant: "destructive" });
     } finally {
-      setUpdating(null);
+      setActionId(null);
     }
   };
 
-  const handleSubmitStatus = async () => {
-    if (!statusOrder || !newStatus) return;
-    setUpdating(statusOrder._id);
-    try {
-      await ordersAPI.updateStatus(statusOrder._id, newStatus, notes);
-      toast({ title: "Status updated", description: `Marked as ${newStatus}` });
-      setStatusOpen(false);
-      await refresh();
-    } catch (e) {
-      toast({ title: "Failed", description: e.message, variant: "destructive" });
-    } finally {
-      setUpdating(null);
-    }
+  const openWhatsApp = (phone, vendorName, orderNum) => {
+    const msg = encodeURIComponent(`Hi ${vendorName || ""}, I'm responding to order ${orderNum}`);
+    window.open(`https://wa.me/${(phone||"919876543210").replace(/\D/g,"")}?text=${msg}`, "_blank");
   };
+
+  const urgentOrders = orders.filter(o => o.urgency === "urgent" || o.priority === "urgent");
+  const totalValue = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Orders" badgeColor="bg-emerald-100 text-emerald-700" />
+      <AppHeader title="Supplier Dashboard" badgeColor="bg-emerald-100 text-emerald-700" />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
-        >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex items-center gap-3 mb-6">
+          <Link to="/supplier/dashboard" className="inline-flex items-center text-sm text-gray-500 hover:text-emerald-600">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+          </Link>
           <div>
-            <Link
-              to="/supplier/dashboard"
-              className="inline-flex items-center text-sm text-gray-600 hover:text-emerald-600 mb-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1" /> Back to dashboard
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Manage Orders
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">Pending Orders</h1>
+            <p className="text-sm text-gray-500">Review and manage pending order requests</p>
           </div>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="all">All</SelectItem>
-            </SelectContent>
-          </Select>
-        </motion.div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[
+            { label: "Total Pending", value: orders.length, icon: Clock, color: "text-orange-600" },
+            { label: "Urgent Orders", value: urgentOrders.length, icon: XCircle, color: "text-red-600" },
+            { label: "Total Value", value: fmtINR(totalValue), icon: IndianRupee, color: "text-emerald-600" },
+          ].map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <s.icon className={`w-6 h-6 ${s.color}`} />
+                  <div>
+                    <p className="text-xs text-gray-500">{s.label}</p>
+                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
 
         {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-          </div>
-        ) : visibleOrders.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-16">
-              <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">No orders here</p>
-            </CardContent>
-          </Card>
+          <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-emerald-500" /></div>
+        ) : orders.length === 0 ? (
+          <Card><CardContent className="text-center py-16">
+            <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p className="text-gray-500">No pending orders at the moment</p>
+          </CardContent></Card>
         ) : (
-          <div className="space-y-4">
-            <AnimatePresence>
-              {visibleOrders.map((o, i) => (
-                <motion.div
-                  key={o._id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -50 }}
-                  transition={{ delay: Math.min(i, 10) * 0.04 }}
-                >
-                  <Card className="hover:shadow-lg transition-all">
-                    <CardHeader className="pb-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <CardTitle className="text-base">
-                            {o.orderNumber}
-                          </CardTitle>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(o.createdAt).toLocaleString("en-IN")}
-                          </p>
-                        </div>
-                        <Badge className={STATUS_BADGE[o.status]}>{o.status}</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                            Customer
-                          </p>
-                          <p className="font-medium">
-                            {o.vendorId?.businessName || o.vendorId?.name || "Vendor"}
-                          </p>
-                          {o.vendorId?.phone && (
-                            <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                              <Phone className="w-3 h-3" /> {o.vendorId.phone}
-                            </p>
-                          )}
-                          <p className="text-sm text-gray-500 flex items-start gap-1 mt-1">
-                            <MapPin className="w-3 h-3 mt-1 flex-shrink-0" />
-                            <span className="line-clamp-2">
-                              {o.deliveryAddress}
-                            </span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
-                            Items
-                          </p>
-                          <ul className="text-sm space-y-1">
-                            {(o.items || []).map((it, idx) => (
-                              <li key={idx} className="flex justify-between gap-2">
-                                <span className="truncate">
-                                  {it.name} × {it.quantity}
-                                </span>
-                                <span className="text-gray-500 flex-shrink-0">
-                                  ₹{it.subtotal || it.price * it.quantity}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                          <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
-                            <span>Total</span>
-                            <span className="text-emerald-600">₹{o.totalAmount}</span>
-                          </div>
-                        </div>
-                      </div>
+          <AnimatePresence>
+            <div className="space-y-4">
+              {orders.map((o, i) => {
+                const vendor = o.vendorId || o.vendor || {};
+                const vName = vendor.businessName || vendor.name || "Vendor";
+                const vPhone = vendor.phone || "";
+                const vAddr = vendor.address || "";
+                const isUrgent = o.urgency === "urgent" || o.priority === "urgent";
+                const itemSummary = (o.items || []).map(it => `${it.name} (${it.quantity}${it.unit})`).join(", ");
+                const specialNote = o.deliveryInstructions || o.specialInstructions;
 
-                      <div className="flex flex-wrap gap-2 pt-2 border-t">
-                        {o.status === "pending" && (
-                          <>
+                return (
+                  <motion.div key={o._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                    <Card className={isUrgent ? "border-orange-300 shadow-sm" : ""}>
+                      <CardContent className="p-5">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-gray-900">{o.orderNumber}</span>
+                            <Badge className="bg-yellow-100 text-yellow-700">pending</Badge>
+                            {isUrgent && <Badge className="bg-orange-100 text-orange-700">urgent</Badge>}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleQuickAccept(o)}
-                              disabled={updating === o._id}
-                              className="bg-emerald-500 hover:bg-emerald-600"
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white gap-1 text-xs"
+                              onClick={() => handleAccept(o._id)}
+                              disabled={actionId === o._id}
                             >
-                              <CheckCircle className="w-4 h-4 mr-1" /> Accept
+                              {actionId === o._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                              Accept
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleReject(o)}
-                              disabled={updating === o._id}
+                              className="text-red-600 border-red-200 hover:bg-red-50 gap-1 text-xs"
+                              onClick={() => handleReject(o._id)}
+                              disabled={actionId === o._id}
                             >
-                              <XCircle className="w-4 h-4 mr-1" /> Reject
+                              <XCircle className="w-3 h-3" /> Reject
                             </Button>
-                          </>
-                        )}
-                        {["confirmed", "processing", "shipped"].includes(o.status) && (
-                          <Button
-                            size="sm"
-                            onClick={() => openStatusDialog(o)}
-                            disabled={updating === o._id}
-                            className="bg-emerald-500 hover:bg-emerald-600"
-                          >
-                            <Clock className="w-4 h-4 mr-1" /> Mark as{" "}
-                            {nextStatus(o.status)}
-                          </Button>
-                        )}
-                        {!["delivered", "cancelled"].includes(o.status) && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openStatusDialog(o)}
-                            disabled={updating === o._id}
-                          >
-                            Update status
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+                            <Button size="sm" variant="ghost" className="w-8 h-8 p-0">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 gap-1 text-xs"
+                              onClick={() => openWhatsApp(vPhone, vName, o.orderNumber)}
+                            >
+                              <MessageSquare className="w-3 h-3" /> Chat on WhatsApp
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Vendor Info */}
+                        <div className="border rounded-lg p-3 bg-gray-50 mb-3">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Vendor Information</p>
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-full bg-saffron-100 text-saffron-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {vName[0] || "V"}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{vName}</p>
+                              <p className="text-xs text-gray-500">Vendor</p>
+                            </div>
+                            <div className="text-xs text-gray-500 space-y-1">
+                              {vPhone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {vPhone}</div>}
+                              {vAddr && <div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {vAddr}</div>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Order Items */}
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Order Items</p>
+                          <p className="text-sm text-gray-700">{itemSummary}</p>
+                          {specialNote && (
+                            <div className="mt-2 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded px-2 py-1.5">
+                              Special Notes: {specialNote}
+                            </div>
+                          )}
+                          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                            <span>Amount: <span className="font-semibold text-gray-900">{fmtINR(o.totalAmount)}</span></span>
+                            <span>Date: {fmtDate(o.createdAt)}</span>
+                            <span>Payment: {o.paymentMethod === "cash" ? "On Delivery" : o.paymentStatus === "paid" ? "Paid" : "Pending"}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </AnimatePresence>
         )}
       </div>
-
-      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Order Status</DialogTitle>
-            <DialogDescription>
-              {statusOrder?.orderNumber} for{" "}
-              {statusOrder?.vendorId?.businessName || statusOrder?.vendorId?.name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-              </SelectContent>
-            </Select>
-            <Textarea
-              placeholder="Add a note for the vendor (optional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitStatus}
-              disabled={updating === statusOrder?._id}
-              className="bg-emerald-500 hover:bg-emerald-600"
-            >
-              {updating === statusOrder?._id ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...
-                </>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

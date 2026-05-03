@@ -15,6 +15,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import VerifyEmail from "./pages/VerifyEmail";
 import VendorDashboard from "./pages/VendorDashboard";
 import SupplierDashboard from "./pages/SupplierDashboard";
 import VendorProfile from "./pages/VendorProfile";
@@ -24,6 +25,7 @@ import SupplierPendingOrders from "./pages/SupplierPendingOrders";
 import OrderTracking from "./pages/OrderTracking";
 import InTransit from "./pages/InTransit";
 import Rating from "./pages/Rating";
+import RatingsReviews from "./pages/RatingsReviews";
 import SavedItems from "./pages/SavedItems";
 import MaterialDetails from "./pages/MaterialDetails";
 import VendorMarketplace from "./pages/VendorMarketplace";
@@ -62,6 +64,7 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/register/:role" element={<Register />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
 
                   {/* Vendor */}
                   <Route path="/vendor" element={<Vendor><VendorDashboard /></Vendor>} />
@@ -72,6 +75,8 @@ const App = () => (
                   <Route path="/vendor/in-transit" element={<Vendor><InTransit /></Vendor>} />
                   <Route path="/vendor/rating" element={<Vendor><Rating /></Vendor>} />
                   <Route path="/vendor/rating/:orderId" element={<Vendor><Rating /></Vendor>} />
+                  <Route path="/vendor/ratings" element={<Vendor><RatingsReviews /></Vendor>} />
+                  <Route path="/vendor/reviews" element={<Vendor><RatingsReviews /></Vendor>} />
                   <Route path="/vendor/saved-items" element={<Vendor><SavedItems /></Vendor>} />
                   <Route path="/material/:id" element={<Vendor><MaterialDetails /></Vendor>} />
                   <Route path="/cart" element={<Vendor><CartWithInstructions /></Vendor>} />

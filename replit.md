@@ -2,6 +2,27 @@
 
 A full-stack MERN marketplace connecting Indian street-food vendors with raw-material suppliers.
 
+## Pages Implemented (matches 20 reference screenshots)
+
+### Vendor
+- `/vendor/dashboard` — VendorDashboard
+- `/vendor/active-orders` — VendorActiveOrders (stats, order cards, Make Payment dialog, WhatsApp contact, Track Order Live)
+- `/vendor/in-transit` — InTransit (stats, per-order tracking timeline, driver details, progress bar, Call Driver / Track on Map)
+- `/track-order/:orderId` — OrderTrackingLive (live map mock, driver card with Call/Message, delivery steps, Quick Actions)
+- `/vendor/profile` — VendorProfile (4 tabs: Profile Details / Business Info / Images / Order History, edit mode)
+- `/vendor/ratings` — RatingsReviews (rating distribution, stats, review list with supplier responses, write review form)
+- `/vendor/saved-items` — SavedItems (stats, search+filter, grid cards with Add to Cart / View Details / Chat)
+- `/vendor/marketplace` — VendorMarketplace
+- `/vendor/sell-items` — VendorSellItems
+- `/vendor/my-listings` — VendorMyListings
+- `/verify-email` — VerifyEmail (6-digit OTP)
+
+### Supplier
+- `/supplier/dashboard` — SupplierDashboard (3 tabs: Overview / Inventory / Orders with Accept/Reject/WhatsApp)
+- `/supplier/inventory` — SupplierInventory (stats: Total/In Stock/Out of Stock/Low Stock, product list, Add/Edit/Delete dialog)
+- `/supplier/pending-orders` — SupplierPendingOrders (stats, order cards with Accept/Reject/View/WhatsApp)
+- `/supplier/profile` — SupplierProfile (4 tabs: Business Info / Images / Delivery Settings / Sales History, toggle Accepting Orders)
+
 ## Tech Stack
 
 - **MongoDB** — data store (in-memory mongodb-memory-server in dev, MongoDB Atlas in prod)
