@@ -20,7 +20,9 @@ import {
   MessageCircle,
   Check,
   Share2,
+  X,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import AppHeader from "@/components/AppHeader";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +38,12 @@ export default function MaterialDetails() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [saved, setSaved] = useState(false);
+  const [showWriteForm, setShowWriteForm] = useState(false);
+  const [writeRating, setWriteRating] = useState(4);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [writeTitle, setWriteTitle] = useState("");
+  const [writeBody, setWriteBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -127,6 +135,29 @@ export default function MaterialDetails() {
   const openWhatsApp = () => {
     const msg = encodeURIComponent(`Hi, I'm interested in your ${material.name}`);
     window.open(`https://wa.me/${(supplier.phone||"919876543210").replace(/\D/g,"")}?text=${msg}`, "_blank");
+  };
+
+  const handleSubmitReview = async () => {
+    if (!writeTitle.trim() || !writeBody.trim()) {
+      toast({ title: "Please fill in all fields", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 800));
+    const newReview = {
+      name: "Your Review",
+      verified: true,
+      rating: writeRating,
+      date: new Date().toLocaleDateString("en-US"),
+      text: writeBody,
+    };
+    mockReviews.unshift(newReview);
+    setWriteTitle("");
+    setWriteBody("");
+    setWriteRating(4);
+    setShowWriteForm(false);
+    setSubmitting(false);
+    toast({ title: "Review submitted!", description: "Thank you for your feedback." });
   };
 
   // Mock reviews
@@ -351,8 +382,81 @@ export default function MaterialDetails() {
         {/* Customer Reviews */}
         {mockReviews.length > 0 && (
           <div className="mt-8 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Customer Reviews</h2>
-            <p className="text-sm text-gray-500 mb-4">{mockReviews.length} reviews from verified buyers</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Customer Reviews</h2>
+                <p className="text-sm text-gray-500 mt-1">{mockReviews.length} reviews from verified buyers</p>
+              </div>
+              <Button onClick={() => setShowWriteForm((v) => !v)} className="bg-saffron-500 hover:bg-saffron-600 text-white gap-2">
+                ✏ Write Review
+              </Button>
+            </div>
+
+            {/* Write Review Form */}
+            {showWriteForm && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">Write a Review</h3>
+                        <p className="text-sm text-gray-500">Share your experience with other vendors</p>
+                      </div>
+                      <button onClick={() => setShowWriteForm(false)} className="text-gray-400 hover:text-gray-600">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <button
+                              key={n}
+                              onMouseEnter={() => setHoverRating(n)}
+                              onMouseLeave={() => setHoverRating(0)}
+                              onClick={() => setWriteRating(n)}
+                            >
+                              <Star className={`w-7 h-7 transition-colors ${n <= (hoverRating || writeRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Review Title</label>
+                        <input
+                          type="text"
+                          value={writeTitle}
+                          onChange={(e) => setWriteTitle(e.target.value)}
+                          placeholder="Summarize your experience..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-saffron-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Your Review</label>
+                        <Textarea
+                          value={writeBody}
+                          onChange={(e) => setWriteBody(e.target.value)}
+                          placeholder="Tell others about your experience with this material..."
+                          rows={4}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={handleSubmitReview}
+                          disabled={submitting}
+                          className="bg-saffron-500 hover:bg-saffron-600 text-white"
+                        >
+                          {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : "Submit Review"}
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowWriteForm(false)}>Cancel</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
             <div className="space-y-3">
               {mockReviews.map((review, i) => (
                 <Card key={i}>
