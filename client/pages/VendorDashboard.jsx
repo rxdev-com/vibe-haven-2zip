@@ -57,6 +57,7 @@ export default function VendorDashboard() {
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("rating");
   const [activeOrdersCount, setActiveOrdersCount] = useState(0);
+  const [inTransitCount, setInTransitCount] = useState(0);
   const [savedIds, setSavedIds] = useState(new Set());
 
   useEffect(() => {
@@ -84,6 +85,13 @@ export default function VendorDashboard() {
     ordersAPI
       .getAll({ status: "confirmed,processing,shipped" })
       .then((d) => setActiveOrdersCount((d.orders || []).length))
+      .catch(() => {});
+    ordersAPI
+      .getAll({ limit: 100 })
+      .then((d) => {
+        const inTransit = (d.orders || []).filter(o => ["shipped", "in_transit", "processing"].includes(o.status));
+        setInTransitCount(inTransit.length);
+      })
       .catch(() => {});
     savedAPI
       .getAll()
@@ -170,11 +178,11 @@ export default function VendorDashboard() {
       to: "/vendor/active-orders",
     },
     {
-      label: "Items in Cart",
-      value: totalItems,
-      icon: ShoppingCart,
-      color: "text-emerald-500",
-      to: "/cart",
+      label: "In Transit",
+      value: inTransitCount,
+      icon: Truck,
+      color: "text-purple-500",
+      to: "/vendor/in-transit",
     },
     {
       label: "Saved Items",
