@@ -1,159 +1,100 @@
-# JugaduBazar — MERN Stack
+# JugaduBazar — MERN Stack Marketplace
 
 A full-stack MERN marketplace connecting Indian street-food vendors with raw-material suppliers.
 
-## Pages Implemented (matches 20 reference screenshots)
+## Run & Operate
 
-### Vendor
-- `/vendor/dashboard` — VendorDashboard
-- `/vendor/active-orders` — VendorActiveOrders (stats, order cards, Make Payment dialog, WhatsApp contact, Track Order Live)
-- `/vendor/in-transit` — InTransit (stats, per-order tracking timeline, driver details, progress bar, Call Driver / Track on Map)
-- `/track-order/:orderId` — OrderTrackingLive (live map mock, driver card with Call/Message, delivery steps, Quick Actions)
-- `/vendor/profile` — VendorProfile (4 tabs: Profile Details / Business Info / Images / Order History, edit mode)
-- `/vendor/ratings` — RatingsReviews (rating distribution, stats, review list with supplier responses, write review form)
-- `/vendor/saved-items` — SavedItems (stats, search+filter, grid cards with Add to Cart / View Details / Chat)
-- `/vendor/marketplace` — VendorMarketplace
-- `/vendor/sell-items` — VendorSellItems
-- `/vendor/my-listings` — VendorMyListings
-- `/verify-email` — VerifyEmail (6-digit OTP)
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Vite dev server on `:5000` (frontend) |
+| `cd backend && npm start` | Production backend |
+| `cd backend && npm run dev` | Dev backend with auto-restart on `:3001` |
+| `cd backend && npm run seed` | Re-run demo seed |
 
-### Supplier
-- `/supplier/dashboard` — SupplierDashboard (3 tabs: Overview / Inventory / Orders with Accept/Reject/WhatsApp)
-- `/supplier/inventory` — SupplierInventory (stats: Total/In Stock/Out of Stock/Low Stock, product list, Add/Edit/Delete dialog)
-- `/supplier/pending-orders` — SupplierPendingOrders (stats, order cards with Accept/Reject/View/WhatsApp)
-- `/supplier/profile` — SupplierProfile (4 tabs: Business Info / Images / Delivery Settings / Sales History, toggle Accepting Orders)
-
-## Tech Stack
-
-- **MongoDB** — data store (in-memory mongodb-memory-server in dev, MongoDB Atlas in prod)
-- **Express** — REST API
-- **React 18 + Vite + Tailwind** — SPA frontend
-- **Node 20** — runtime
-- All source code is JavaScript / JSX (no TypeScript)
-
-## Project Structure
-
-```
-backend/
-├── server.js                # Express app entry
-├── config/db.js             # Mongo connection (auto in-memory if no URI)
-├── middleware/
-│   ├── auth.js              # JWT auth + role guards
-│   └── errorHandler.js
-├── models/
-│   ├── User.js              # vendor / supplier accounts
-│   ├── Material.js          # supplier-listed products
-│   ├── Order.js             # orders with status history & ratings
-│   ├── Notification.js
-│   ├── SavedItem.js         # vendor favorites
-│   └── CartItem.js          # persistent cart
-├── routes/
-│   ├── auth.js              # register, login, /me, profile, email verify
-│   ├── materials.js         # CRUD + search/filter/pagination
-│   ├── orders.js            # create, list, status, cancel, rate
-│   ├── notifications.js
-│   ├── saved.js
-│   ├── cart.js
-│   └── users.js             # public supplier directory
-├── utils/seed.js            # demo data seed
-├── package.json
-└── .env.example
-
-client/
-├── App.jsx                  # SPA routing
-├── main.jsx
-├── pages/                   # ~27 page components
-├── components/ui/           # Radix-based component library
-├── contexts/                # Auth, Cart, Notification, Language
-├── hooks/, lib/             # api.js calls /api/* (proxied to backend)
-└── global.css
-
-vite.config.js               # Dev server on :5000, proxies /api → :3001
-```
-
-## Workflows
-
-- **Start application** — Vite dev server on `:5000` (the user-facing preview)
-- **Backend** — Express + Mongo on `:3001`
-
-The Vite dev server proxies `/api/*` requests to the backend, so the frontend can call `fetch("/api/...")` and everything just works.
-
-## API Surface
-
-All routes are prefixed with `/api`. JWT bearer tokens (returned by login/register) are required for protected routes.
-
-### Auth (`/api/auth`)
-- `POST /register`
-- `POST /login`
-- `GET  /me`
-- `PUT  /profile`
-- `POST /verify-email`
-- `POST /resend-verification`
-- `POST /logout`
-
-### Materials (`/api/materials`)
-- `GET    /`                         — list with search/category/price/stock filters + pagination
-- `GET    /:id`                      — single item with supplier info
-- `GET    /supplier/:supplierId`     — items for one supplier
-- `POST   /`                         — supplier only
-- `PUT    /:id`                      — supplier only (own items)
-- `DELETE /:id`                      — supplier only (own items)
-
-### Orders (`/api/orders`)
-- `GET /`                            — vendor sees their orders, supplier sees incoming
-- `GET /:id`
-- `POST /`                           — vendor only; auto-decrements stock, notifies supplier
-- `PUT /:id/status`                  — supplier only; logs to status history, notifies vendor
-- `PUT /:id/cancel`                  — either party; restores stock, notifies the other
-- `PUT /:id/rate`                    — vendor only after delivery; updates supplier & material aggregates
-
-### Notifications (`/api/notifications`)
-- `GET /`, `PUT /:id/read`, `PUT /read-all`, `DELETE /:id`, `DELETE /clear`
-
-### Saved Items (`/api/saved`)
-- `GET /`, `POST /:materialId`, `DELETE /:materialId`
-
-### Cart (`/api/cart`)
-- `GET /`, `POST /`, `PUT /:materialId`, `DELETE /:materialId`, `DELETE /`
-
-### Users (`/api/users`)
-- `GET /suppliers`                   — public supplier directory
-- `GET /:id`
-
-### Health
-- `GET /api/ping`, `GET /api/health`
-
-## Demo Credentials
-
-The backend auto-seeds these on first start:
-
-| Role     | Email                     | Password    |
-|----------|---------------------------|-------------|
-| Vendor   | `vendor@example.com`      | `vendor123` |
-| Supplier | `supplier@example.com`    | `supplier123` |
-
-…plus 6 demo materials (oils, spices, grains, pulses).
-
-## Configuration (`backend/.env`)
-
+**Required env vars (backend/.env):**
 ```
 PORT=3001
-MONGODB_URI=                # leave blank → uses in-memory MongoDB
+MONGODB_URI=            # blank = in-memory MongoDB
 JWT_SECRET=change-me
 JWT_EXPIRES_IN=7d
 CORS_ORIGIN=*
 SEED_ON_START=true
+STRIPE_SECRET_KEY=      # optional — mock mode if blank
+EMAIL_USER=             # optional Gmail sender
+EMAIL_PASS=             # optional Gmail App Password
+EMAIL_SERVICE=gmail
 ```
 
-For production, point `MONGODB_URI` at a real MongoDB cluster (Atlas, etc.) — nothing else needs to change.
+## Stack
 
-## Scripts
+- **MongoDB** — in-memory (dev) via `mongodb-memory-server`, Atlas in prod
+- **Express + Node 20** — REST API on `:3001`
+- **React 18 + Vite + Tailwind** — SPA on `:5000`
+- **Stripe** — payment intents (card + UPI); mock mode without key
+- **Nodemailer** — OTP emails; logs to console without credentials
+- All JS/JSX — no TypeScript
 
-Frontend (root):
-- `npm run dev` — Vite dev server on :5000
-- `npm run build` — production build to `dist/`
+## Where Things Live
 
-Backend (`backend/`):
-- `npm start` — production server
-- `npm run dev` — `node --watch` (auto-restart on file changes)
-- `npm run seed` — re-run the seed script
+```
+backend/
+├── server.js              # Express entry — mounts all routes
+├── config/db.js           # Mongo connection (auto in-memory)
+├── middleware/auth.js      # JWT + role guards
+├── models/                # User, Material, Order, Notification, SavedItem, CartItem
+├── routes/                # auth, materials, orders, notifications, saved, cart, users, payments
+├── utils/seed.js          # 53 demo materials across 2 suppliers + 2 vendors
+└── utils/email.js         # Nodemailer OTP sender
+
+client/
+├── App.jsx                # All SPA routes
+├── pages/                 # ~30 page components
+├── components/
+│   ├── PaymentModal.jsx   # COD + Stripe/UPI payment selection
+│   └── ui/                # Radix component library
+├── contexts/              # Auth, Cart, Notification, Language
+└── lib/api.js             # All fetch calls (authAPI, materialsAPI, ordersAPI, paymentsAPI…)
+
+public/favicon.svg         # Custom shopping-bag + rupee favicon
+```
+
+## Architecture Decisions
+
+- Vite proxies `/api/*` → `http://localhost:3001` so frontend uses relative URLs
+- JWT stored in `localStorage` via `authToken` helper in `api.js`
+- In-memory MongoDB auto-seeded on every backend start (stateless dev)
+- Stripe PaymentIntent created server-side; mock response returned when `STRIPE_SECRET_KEY` not set
+- OTP emails print to console in dev when `EMAIL_USER`/`EMAIL_PASS` not set
+
+## Product
+
+### Vendor
+- Browse 53+ raw materials (oils, spices, grains, pulses, dairy, vegetables, dry fruits…)
+- Cart with per-supplier delivery preferences + payment modal (COD / Card / UPI)
+- Active orders, in-transit tracking, order history, ratings
+- Saved items, marketplace, sell items, my listings
+
+### Supplier
+- Dashboard with clickable stats → Revenue page, Completed Orders page, Analytics page
+- Analytics banner linking to `/supplier/analytics`
+- Notifications page (`/supplier/notifications`) — real backend notifications with filter/clear
+- Inventory management (add/edit/delete products)
+- Pending orders (accept/reject/WhatsApp)
+- Profile: Business Info, Images (upload + persist), Delivery Settings, Sales History (real data)
+- Accepting Orders toggle — fixed to stay within bounds
+
+## Demo Credentials
+
+| Role | Email | Password |
+|---|---|---|
+| Vendor | `vendor@example.com` | `vendor123` |
+| Vendor 2 | `vendor2@example.com` | `vendor123` |
+| Supplier | `supplier@example.com` | `supplier123` |
+| Supplier 2 | `supplier2@example.com` | `supplier123` |
+
+## Gotchas
+
+- Backend uses in-memory MongoDB — data resets on every backend restart
+- Stripe works in mock mode without key (returns `mock_pi_*` IDs)
+- HMR context invalidation warnings are harmless — full page reload resolves them
+- `businessImages` field stored with an `id` field (not MongoDB `_id`) for frontend keying
