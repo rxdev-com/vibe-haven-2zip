@@ -22,6 +22,7 @@ import VendorProfile from "./pages/VendorProfile";
 import SupplierProfile from "./pages/SupplierProfile";
 import SupplierInventory from "./pages/SupplierInventory";
 import SupplierPendingOrders from "./pages/SupplierPendingOrders";
+import SupplierNotifications from "./pages/SupplierNotifications";
 import OrderTracking from "./pages/OrderTracking";
 import InTransit from "./pages/InTransit";
 import Rating from "./pages/Rating";
@@ -98,6 +99,7 @@ const App = () => (
                   <Route path="/supplier/profile" element={<Supplier><SupplierProfile /></Supplier>} />
                   <Route path="/supplier/inventory" element={<Supplier><SupplierInventory /></Supplier>} />
                   <Route path="/supplier/pending-orders" element={<Supplier><SupplierPendingOrders /></Supplier>} />
+                  <Route path="/supplier/notifications" element={<Supplier><SupplierNotifications /></Supplier>} />
                   <Route path="/supplier/revenue" element={<Supplier><SupplierRevenue /></Supplier>} />
                   <Route path="/supplier/completed-orders" element={<Supplier><SupplierCompletedOrders /></Supplier>} />
                   <Route path="/supplier/analytics" element={<Supplier><SupplierAnalytics /></Supplier>} />

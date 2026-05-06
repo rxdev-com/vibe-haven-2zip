@@ -6,10 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus, Package, TrendingUp, ShoppingBag, Clock, CheckCircle,
-  Loader2, IndianRupee, Eye, Pencil, Trash2, MessageSquare, Bell, LogOut,
+  Loader2, IndianRupee, Eye, Pencil, Trash2, MessageSquare, Bell,
+  LogOut, BarChart2, ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { materialsAPI, ordersAPI } from "@/lib/api";
 
 const STATUS_BADGE = {
@@ -21,7 +23,7 @@ const STATUS_BADGE = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-function fmtINR(v) { return `₹${Number(v||0).toLocaleString("en-IN")}`; }
+function fmtINR(v) { return `₹${Number(v || 0).toLocaleString("en-IN")}`; }
 function fmtDate(d) {
   if (!d) return "";
   return new Date(d).toLocaleDateString("en-CA");
@@ -31,6 +33,7 @@ export default function SupplierDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { unreadCount } = useNotifications();
   const [tab, setTab] = useState(0);
   const [materials, setMaterials] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -58,7 +61,7 @@ export default function SupplierDashboard() {
   const pendingOrders = orders.filter(o => o.status === "pending");
   const completedOrders = orders.filter(o => o.status === "delivered");
   const monthlyRevenue = completedOrders
-    .filter(o => new Date(o.createdAt) > new Date(Date.now() - 30*24*60*60*1000))
+    .filter(o => new Date(o.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
     .reduce((s, o) => s + (o.totalAmount || 0), 0);
 
   const topProducts = useMemo(() => {
@@ -116,7 +119,7 @@ export default function SupplierDashboard() {
 
   const openWhatsApp = (phone, vendorName) => {
     const msg = encodeURIComponent(`Hi ${vendorName || ""}, regarding your order`);
-    window.open(`https://wa.me/${(phone||"919876543210").replace(/\D/g,"")}?text=${msg}`, "_blank");
+    window.open(`https://wa.me/${(phone || "919876543210").replace(/\D/g, "")}?text=${msg}`, "_blank");
   };
 
   const TABS = ["Overview", "Inventory", "Orders"];
@@ -139,14 +142,14 @@ export default function SupplierDashboard() {
             <Link to="/supplier/notifications">
               <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
                 <Bell className="w-5 h-5" />
-                {pendingOrders.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">{pendingOrders.length}</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">{unreadCount}</span>
                 )}
               </Button>
             </Link>
             <Link to="/supplier/profile">
               <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm cursor-pointer hover:bg-emerald-600 transition-colors">
-                {(user?.name || "PS").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+                {(user?.name || "PS").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
               </div>
             </Link>
             <Button variant="outline" size="sm" onClick={() => { logout(); navigate("/"); }}>
@@ -163,41 +166,50 @@ export default function SupplierDashboard() {
           <p className="text-sm text-gray-500">Manage your inventory and orders efficiently</p>
         </motion.div>
 
-        {/* Stats */}
+        {/* Stats cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
             { label: "Total Products", value: materials.length, icon: Package, color: "text-emerald-600", link: "/supplier/inventory" },
             { label: "Pending Orders", value: pendingOrders.length, icon: Clock, color: "text-orange-600", link: "/supplier/pending-orders" },
-            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue), icon: TrendingUp, color: "text-blue-600", link: null },
-            { label: "Completed Orders", value: completedOrders.length, icon: CheckCircle, color: "text-emerald-600", link: null },
+            { label: "Monthly Revenue", value: fmtINR(monthlyRevenue), icon: TrendingUp, color: "text-blue-600", link: "/supplier/revenue" },
+            { label: "Completed Orders", value: completedOrders.length, icon: CheckCircle, color: "text-emerald-600", link: "/supplier/completed-orders" },
           ].map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              {s.link ? (
-                <Link to={s.link} className="block">
-                  <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4 flex items-center gap-3">
-                      <s.icon className={`w-6 h-6 ${s.color}`} />
-                      <div>
-                        <p className="text-xs text-gray-500">{s.label}</p>
-                        <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ) : (
-                <Card>
+              <Link to={s.link} className="block">
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow group">
                   <CardContent className="p-4 flex items-center gap-3">
                     <s.icon className={`w-6 h-6 ${s.color}`} />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-500">{s.label}</p>
                       <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
                     </div>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
                   </CardContent>
                 </Card>
-              )}
+              </Link>
             </motion.div>
           ))}
         </div>
+
+        {/* Analytics Banner */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mb-6">
+          <Link to="/supplier/analytics">
+            <Card className="cursor-pointer hover:shadow-lg transition-all group border-0 bg-gradient-to-r from-emerald-500 to-blue-600 text-white overflow-hidden">
+              <CardContent className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <BarChart2 className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-lg">Analytics & Reports</p>
+                    <p className="text-white/80 text-sm">View business performance, top products, fulfillment rates & more</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-6 h-6 text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
 
         {/* Tabs */}
         <div className="flex border-b mb-5 bg-white rounded-t-lg overflow-hidden">
@@ -370,9 +382,9 @@ export default function SupplierDashboard() {
                                     </Button>
                                   </>
                                 )}
-                                {o.status === "confirmed" && (
+                                {(o.status === "confirmed" || o.status === "processing" || o.status === "shipped") && (
                                   <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => handleMarkDelivered(o._id)}>
-                                    <Clock className="w-3 h-3" /> Mark Delivered
+                                    <CheckCircle className="w-3 h-3" /> Mark Delivered
                                   </Button>
                                 )}
                                 <Button
@@ -380,7 +392,7 @@ export default function SupplierDashboard() {
                                   className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 gap-1 text-xs"
                                   onClick={() => openWhatsApp(vPhone, vName)}
                                 >
-                                  <MessageSquare className="w-3 h-3" /> Chat on WhatsApp
+                                  <MessageSquare className="w-3 h-3" /> WhatsApp
                                 </Button>
                               </div>
                             </div>
@@ -395,7 +407,10 @@ export default function SupplierDashboard() {
                                 <p className="text-xs text-gray-600">{itemSummary}</p>
                               </div>
                               <p className="text-xs text-gray-500">
-                                Amount: <span className="font-medium text-gray-700">{fmtINR(o.totalAmount)}</span> &nbsp; Date: {fmtDate(o.createdAt)} &nbsp; Payment: {o.paymentStatus === "paid" ? "Completed" : "Pending"}
+                                Amount: <span className="font-medium text-gray-700">{fmtINR(o.totalAmount)}</span>
+                                &nbsp; Date: {fmtDate(o.createdAt)}
+                                &nbsp; Payment: {o.paymentStatus === "paid" ? "✅ Paid" : "⏳ Pending"}
+                                &nbsp; Method: {o.paymentMethod === "cash" ? "COD" : o.paymentMethod?.toUpperCase()}
                               </p>
                             </div>
                           </CardContent>

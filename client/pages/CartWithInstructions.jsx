@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Package, Loader2, CreditCard, Lock,
+  ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Package,
+  Loader2, CreditCard, Lock, Truck, Smartphone,
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
+import PaymentModal from "@/components/PaymentModal";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -34,20 +36,19 @@ const URGENCY_OPTIONS = [
 
 export default function CartWithInstructions() {
   const navigate = useNavigate();
-  const { items, updateQuantity, removeItem, totalAmount, totalItems, clearCart } = useCart();
+  const { items, updateQuantity, removeItem, totalAmount, clearCart } = useCart();
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [address, setAddress] = useState(user?.address || "");
-  const [phone, setPhone] = useState(user?.phone || "+91 98765 43210");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [placing, setPlacing] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
-  // Per-group state (keyed by supplierId)
   const [groupPrefs, setGroupPrefs] = useState({});
   const [groupUrgency, setGroupUrgency] = useState({});
   const [groupNotes, setGroupNotes] = useState({});
 
-  // Group cart items by supplier
   const groups = items.reduce((acc, it) => {
     const sid = it.supplierId || it.id || "unknown";
     if (!acc[sid]) acc[sid] = { name: it.supplierName || "Supplier", items: [], subtotal: 0 };
@@ -63,15 +64,14 @@ export default function CartWithInstructions() {
   }, 0);
   const grandTotal = totalAmount + totalDeliveryFee;
 
-  const getGroupPref = (sid) => groupPrefs[sid] || "standard_same_day";
-  const getGroupUrgency = (sid) => groupUrgency[sid] || "normal";
-  const getGroupNotes = (sid) => groupNotes[sid] || "";
-
+  const getGroupPref = sid => groupPrefs[sid] || "standard_same_day";
+  const getGroupUrgency = sid => groupUrgency[sid] || "normal";
+  const getGroupNotes = sid => groupNotes[sid] || "";
   const setGroupPref = (sid, v) => setGroupPrefs(p => ({ ...p, [sid]: v }));
   const setGroupUrg = (sid, v) => setGroupUrgency(p => ({ ...p, [sid]: v }));
   const setGroupNote = (sid, v) => setGroupNotes(p => ({ ...p, [sid]: v }));
 
-  const handlePlaceOrder = async () => {
+  const validateAndOpenPayment = () => {
     if (!items.length) return;
     if (!address.trim()) {
       toast({ title: "Delivery address required", description: "Enter where to deliver your order.", variant: "destructive" });
@@ -81,8 +81,17 @@ export default function CartWithInstructions() {
       toast({ title: "Phone number required", variant: "destructive" });
       return;
     }
+    setPaymentOpen(true);
+  };
+
+  const placeOrders = async (paymentMethod, paymentIntentId) => {
     setPlacing(true);
     try {
+      const mapMethod = {
+        cod: "cash",
+        card: "card",
+        upi: "upi",
+      };
       const placedOrders = [];
       for (const sid of supplierIds) {
         const group = groups[sid];
@@ -94,21 +103,25 @@ export default function CartWithInstructions() {
           items: orderItems,
           deliveryAddress: address,
           deliveryInstructions: getGroupNotes(sid),
-          paymentMethod: "cash",
+          paymentMethod: mapMethod[paymentMethod] || "cash",
           urgency: getGroupUrgency(sid),
           deliveryPreference: getGroupPref(sid),
           phone,
+          ...(paymentIntentId && { paymentIntentId }),
         });
         placedOrders.push(res.order);
       }
       await clearCart();
       toast({
-        title: `${placedOrders.length} order(s) placed!`,
-        description: "Track them in your Active Orders page.",
+        title: `${placedOrders.length} order${placedOrders.length > 1 ? "s" : ""} placed!`,
+        description: paymentMethod === "cod"
+          ? "Cash on delivery. Track them in Active Orders."
+          : "Payment confirmed! Track them in Active Orders.",
       });
       navigate("/vendor/active-orders");
     } catch (e) {
       toast({ title: "Could not place order", description: e.message, variant: "destructive" });
+      throw e;
     } finally {
       setPlacing(false);
     }
@@ -152,13 +165,11 @@ export default function CartWithInstructions() {
                   const pref = getGroupPref(sid);
                   const urgency = getGroupUrgency(sid);
                   const notes = getGroupNotes(sid);
-                  const prefLabel = DELIVERY_PREFS.find(p => p.value === pref)?.label || "";
 
                   return (
                     <motion.div key={sid} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
                       <Card>
                         <CardContent className="p-5">
-                          {/* Supplier header */}
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <Package className="w-5 h-5 text-saffron-500" />
@@ -167,7 +178,6 @@ export default function CartWithInstructions() {
                             <Badge variant="outline">{group.items.length} item{group.items.length > 1 ? "s" : ""}</Badge>
                           </div>
 
-                          {/* Items */}
                           <div className="space-y-3 mb-4">
                             {group.items.map((it) => (
                               <div key={it.id} className="flex items-center gap-3 border rounded-lg p-3">
@@ -183,22 +193,11 @@ export default function CartWithInstructions() {
                                   <p className="text-xs text-saffron-600">₹{it.price}/{it.unit}</p>
                                 </div>
                                 <div className="flex items-center border rounded-lg">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => updateQuantity(it.id, it.quantity - 1)}
-                                  >
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateQuantity(it.id, it.quantity - 1)}>
                                     <Minus className="w-3 h-3" />
                                   </Button>
                                   <span className="w-7 text-center text-sm font-medium">{it.quantity}</span>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => updateQuantity(it.id, it.quantity + 1)}
-                                    disabled={it.stock && it.quantity >= it.stock}
-                                  >
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateQuantity(it.id, it.quantity + 1)} disabled={it.stock && it.quantity >= it.stock}>
                                     <Plus className="w-3 h-3" />
                                   </Button>
                                 </div>
@@ -210,7 +209,6 @@ export default function CartWithInstructions() {
                             ))}
                           </div>
 
-                          {/* Delivery Preference + Urgency */}
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
                               <Label className="text-xs text-gray-600 mb-1 block">Delivery Preference</Label>
@@ -241,21 +239,17 @@ export default function CartWithInstructions() {
                             </div>
                           </div>
 
-                          {/* Special Instructions */}
                           <div className="mb-3">
                             <Label className="text-xs text-gray-600 mb-1 block">Special Instructions</Label>
-                            <div className="relative">
-                              <Textarea
-                                value={notes}
-                                onChange={e => setGroupNote(sid, e.target.value)}
-                                placeholder="Any special instructions for the supplier..."
-                                rows={3}
-                                className="text-sm resize-none"
-                              />
-                            </div>
+                            <Textarea
+                              value={notes}
+                              onChange={e => setGroupNote(sid, e.target.value)}
+                              placeholder="Any special instructions for the supplier..."
+                              rows={2}
+                              className="text-sm resize-none"
+                            />
                           </div>
 
-                          {/* Subtotal */}
                           <div className="flex justify-between items-center pt-2 border-t">
                             <span className="font-semibold text-sm text-gray-700">Subtotal:</span>
                             <span className="font-bold text-gray-900">₹{groupTotal}</span>
@@ -270,7 +264,6 @@ export default function CartWithInstructions() {
 
             {/* Right: Delivery Info + Order Summary */}
             <div className="lg:col-span-2 space-y-4">
-              {/* Delivery Information */}
               <Card>
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-base text-gray-900 mb-4">Delivery Information</h3>
@@ -325,15 +318,28 @@ export default function CartWithInstructions() {
                     </div>
                   </div>
 
+                  {/* Payment method badges */}
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
+                      <Truck className="w-3.5 h-3.5 text-orange-500" /> COD
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-blue-500" /> Card
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-blue-500" /> UPI
+                    </div>
+                  </div>
+
                   <Button
-                    onClick={handlePlaceOrder}
+                    onClick={validateAndOpenPayment}
                     disabled={placing || items.length === 0}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3"
                   >
                     {placing ? (
                       <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Placing order...</>
                     ) : (
-                      <><CreditCard className="w-4 h-4 mr-2" /> Proceed to Payment</>
+                      <><CreditCard className="w-4 h-4 mr-2" /> Proceed to Payment · ₹{grandTotal}</>
                     )}
                   </Button>
 
@@ -347,6 +353,14 @@ export default function CartWithInstructions() {
           </div>
         )}
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        amount={grandTotal}
+        onConfirm={placeOrders}
+      />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
-// Auth token management (single source of truth)
 export const authToken = {
   get: () => localStorage.getItem("auth_token"),
   set: (token) => localStorage.setItem("auth_token", token),
@@ -65,6 +64,7 @@ export const authAPI = {
   me: () => apiRequest("/auth/me"),
   updateProfile: (updates) => apiRequest("/auth/profile", { method: "PUT", body: JSON.stringify(updates) }),
   logout: () => apiRequest("/auth/logout", { method: "POST" }),
+  resendVerification: () => apiRequest("/auth/resend-verification", { method: "POST" }),
 };
 
 export const materialsAPI = {
@@ -117,6 +117,11 @@ export const usersAPI = {
   getById: (id) => apiRequest(`/users/${id}`),
 };
 
+export const paymentsAPI = {
+  createIntent: (data) => apiRequest("/payments/create-intent", { method: "POST", body: JSON.stringify(data) }),
+  confirm: (paymentIntentId) => apiRequest("/payments/confirm", { method: "POST", body: JSON.stringify({ paymentIntentId }) }),
+};
+
 export const healthAPI = {
   ping: () => apiRequest("/ping"),
 };
@@ -129,5 +134,6 @@ export default {
   cart: cartAPI,
   saved: savedAPI,
   users: usersAPI,
+  payments: paymentsAPI,
   health: healthAPI,
 };

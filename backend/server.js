@@ -13,6 +13,7 @@ import notificationRoutes from "./routes/notifications.js";
 import savedRoutes from "./routes/saved.js";
 import cartRoutes from "./routes/cart.js";
 import userRoutes from "./routes/users.js";
+import paymentsRoutes from "./routes/payments.js";
 import { seedDemoData } from "./utils/seed.js";
 
 const app = express();
@@ -49,6 +50,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/saved", savedRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/payments", paymentsRoutes);
 
 // 404 + error handlers
 app.use("/api", notFound);

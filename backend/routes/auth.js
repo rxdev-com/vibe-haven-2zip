@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import User from "../models/User.js";
 import { requireAuth, signToken } from "../middleware/auth.js";
+import { sendOTPEmail } from "../utils/email.js";
 
 const router = Router();
 
@@ -45,8 +46,17 @@ router.post("/register", async (req, res, next) => {
 
     const token = signToken(user._id);
 
+    // Send OTP email (async - don't block registration)
+    sendOTPEmail(data.email, code, data.name).then(result => {
+      if (result.dev) {
+        console.log(`[DEV] Email OTP for ${data.email}: ${code}`);
+      }
+    }).catch(err => {
+      console.error("Failed to send OTP email:", err.message);
+    });
+
     res.status(201).json({
-      message: "Account created successfully",
+      message: "Account created successfully. Check your email for the OTP.",
       token,
       user: user.toPublicJSON(),
       devVerificationCode: code,
@@ -123,6 +133,7 @@ const updateProfileSchema = z.object({
   estimatedDeliveryTime: z.string().optional(),
   // Business images
   businessImages: z.array(z.object({
+    id: z.string().optional(),
     url: z.string().optional(),
     title: z.string().optional(),
     description: z.string().optional(),
@@ -158,8 +169,14 @@ router.post("/resend-verification", requireAuth, async (req, res, next) => {
     user.emailVerificationCode = code;
     user.emailVerificationSentAt = new Date();
     await user.save();
+
+    // Send OTP email
+    sendOTPEmail(req.user.email, code, req.user.name).then(result => {
+      if (result.dev) console.log(`[DEV] Resend OTP for ${req.user.email}: ${code}`);
+    }).catch(err => console.error("Email error:", err.message));
+
     res.json({
-      message: "Verification email sent",
+      message: "Verification code sent to your email",
       devVerificationCode: code,
     });
   } catch (err) {
@@ -177,7 +194,7 @@ router.post("/verify-email", requireAuth, async (req, res, next) => {
     user.emailVerified = true;
     user.emailVerificationCode = null;
     await user.save();
-    res.json({ message: "Email verified", user: user.toPublicJSON() });
+    res.json({ message: "Email verified successfully", user: user.toPublicJSON() });
   } catch (err) {
     next(err);
   }
