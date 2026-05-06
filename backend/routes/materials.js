@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
 import Material from "../models/Material.js";
+import User from "../models/User.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 
 const router = Router();
@@ -23,7 +24,6 @@ function parseListQuery(query, allowInactive = false) {
 
   const filter = {};
 
-  // Default: only show active. Pass isActive=all to skip filter (supplier's own page).
   if (allowInactive || isActive === "all") {
     // no isActive filter
   } else {
@@ -61,18 +61,48 @@ function parseListQuery(query, allowInactive = false) {
   };
 }
 
-// Public: browse materials (active only)
+// Public: browse materials with optional geo-filter
 router.get("/", async (req, res, next) => {
   try {
+    const { lat, lng, radius } = req.query;
     const { filter, sort, skip, limit, page } = parseListQuery(req.query);
+
+    // When coordinates provided, restrict to nearby suppliers
+    if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+      const maxDistMetres = (Number(radius) || 50) * 1000;
+      try {
+        const nearbySuppliers = await User.find({
+          role: "supplier",
+          "location.coordinates": { $ne: [0, 0] },
+          location: {
+            $nearSphere: {
+              $geometry: {
+                type: "Point",
+                coordinates: [Number(lng), Number(lat)],
+              },
+              $maxDistance: maxDistMetres,
+            },
+          },
+        }).select("_id");
+        filter.supplier = { $in: nearbySuppliers.map((s) => s._id) };
+      } catch (geoErr) {
+        // If geo query fails (e.g. no valid coordinates indexed), skip geo filter
+        console.warn("Geo filter skipped:", geoErr.message);
+      }
+    }
+
     const [materials, total] = await Promise.all([
       Material.find(filter)
-        .populate("supplier", "name businessName address rating profileImage phone deliveryAreas")
+        .populate(
+          "supplier",
+          "name businessName address rating profileImage phone deliveryAreas location maxDeliveryDistance estimatedDeliveryTime deliveryFee freeDeliveryAbove minOrderAmount acceptingOrders",
+        )
         .sort(sort)
         .skip(skip)
         .limit(limit),
       Material.countDocuments(filter),
     ]);
+
     res.json({
       materials,
       pagination: { total, page, pages: Math.ceil(total / limit), limit },
@@ -89,7 +119,6 @@ router.get("/supplier/:supplierId", requireAuth, async (req, res, next) => {
     if (!mongoose.isValidObjectId(supplierId))
       return res.status(400).json({ error: "Invalid supplier id" });
 
-    // If the authenticated user IS the supplier, show all (including inactive)
     const isOwner =
       req.user.role === "supplier" &&
       req.user._id.toString() === supplierId;
@@ -119,7 +148,7 @@ router.get("/:id", async (req, res, next) => {
       return res.status(400).json({ error: "Invalid material id" });
     const material = await Material.findById(req.params.id).populate(
       "supplier",
-      "name businessName address phone description rating profileImage deliveryAreas estimatedDeliveryTime minOrderAmount deliveryFee",
+      "name businessName address phone description rating profileImage deliveryAreas estimatedDeliveryTime minOrderAmount deliveryFee freeDeliveryAbove location maxDeliveryDistance",
     );
     if (!material) return res.status(404).json({ error: "Material not found" });
     res.json({ material });
